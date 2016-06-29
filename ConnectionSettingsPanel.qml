@@ -41,4 +41,10 @@ ColumnLayout {
         settings.apiKey = apiKeyField.text
         settings.password = passwordField.text
     }
+
+    function reset() {
+        urlField.text = settings.url
+        apiKeyField.text = settings.apiKey
+        passwordField.text = settings.password
+    }
 }

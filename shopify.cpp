@@ -1,5 +1,8 @@
 #include "Shopify.h"
 
+#include <QtDebug>
+
+
 Shopify::Shopify(QObject *parent)
     : QObject(parent)
     , state_(STATE_DISCONNECTED)

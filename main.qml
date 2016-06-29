@@ -11,7 +11,7 @@ ApplicationWindow {
     title: qsTr("Xeroify")
 
     property Shopify shopify: Shopify { }
-    property ConnectionSettings xeroSettings: ConnectionSettings { }
+    property Xero xero: Xero { }
 
     header: ToolBar {
         RowLayout {
@@ -42,7 +42,7 @@ ApplicationWindow {
                     MenuItem {
                         text: "Xero"
                         onClicked: {
-                            settingsPopup.settings = xeroSettings
+                            settingsPopup.settings = xero.settings
                             settingsPopup.open()
                         }
                     }
@@ -98,7 +98,9 @@ ApplicationWindow {
                     }
                     Button {
                         text: "Cancel"
-                        onClicked: settingsPopup.close()
+                        onClicked: {
+                            settingsPopup.close()
+                        }
                     }
                 }
             }

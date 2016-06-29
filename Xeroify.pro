@@ -4,7 +4,9 @@ CONFIG += c++11
 
 SOURCES += main.cpp \
     ConnectionSettings.cpp \
-    Shopify.cpp
+    Shopify.cpp \
+    Xero.cpp \
+    Http.cpp
 
 RESOURCES += qml.qrc
 
@@ -16,4 +18,6 @@ include(deployment.pri)
 
 HEADERS += \
     ConnectionSettings.h \
-    Shopify.h
+    Shopify.h \
+    Xero.h \
+    Http.h

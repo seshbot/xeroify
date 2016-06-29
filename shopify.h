@@ -2,7 +2,6 @@
 #define SHOPIFY_H
 
 #include <QObject>
-#include <QtDebug>
 
 #include "ConnectionSettings.h"
 

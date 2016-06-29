@@ -8,7 +8,10 @@
 #include <QQuickWindow>
 #endif
 
+#include <QDebug>
+
 #include <Shopify.h>
+#include <Xero.h>
 #include <ConnectionSettings.h>
 
 int main(int argc, char *argv[])
@@ -17,12 +20,19 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
 
     qmlRegisterType<Shopify>("BusyBot", 1, 0, "Shopify");
+    qmlRegisterType<Xero>("BusyBot", 1, 0, "Xero");
     qmlRegisterType<ConnectionSettings>("BusyBot", 1, 0, "ConnectionSettings");
 
     QQmlApplicationEngine engine;
 
 #ifndef NDEBUG
+    qDebug() << "Current directory: " << QDir::current().absolutePath();
+
+#ifdef __APPLE__
+    auto rootFilename = QLatin1String("../../../../Xeroify/main.qml");
+#else
     auto rootFilename = QLatin1String("../Xeroify/main.qml");
+#endif
 
     QFileSystemWatcher fileUpdates;
     QDir rootDirectory = QFileInfo( rootFilename ).dir();
