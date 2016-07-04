@@ -17,30 +17,141 @@ ApplicationWindow {
         RowLayout {
             anchors.fill: parent
             ToolButton {
-                text: shopify.state == Shopify.STATE_DISCONNECTED ? "Connect" : shopify.state == Shopify.STATE_CONNECTING ? "Connecting..." : "Disconnect"
-                checkable: true
-                checked: shopify.state != Shopify.STATE_DISCONNECTED
-                onClicked: if ( shopify.state == Shopify.STATE_DISCONNECTED ) { shopify.connect(); } else { shopify.disconnect(); }
+                text: shopify.state === Shopify.STATE_LOADING ? 'Abort' : 'Load'
+                onClicked: {
+                    if (shopify.state === Shopify.STATE_LOADING) {
+                        shopify.abort()
+                    } else {
+                        shopify.load()
+                    }
+                }
+            }
+            ToolButton {
+                id: statusMenuButton
+                text: 'Status'
+                onClicked: statusMenu.open()
+                Menu {
+                    id: statusMenu
+                    y: statusMenuButton.height
+                    MenuItem {
+                        CheckBox {
+                            text: 'all'
+                        }
+                    }
+                    MenuItem {
+                        CheckBox {
+                            text: 'open'
+                        }
+                    }
+                    MenuItem {
+                        CheckBox {
+                            text: 'cancelled'
+                        }
+                    }
+                }
+            }
+            ToolButton {
+                id: financialMenuButton
+                text: 'Financial'
+                onClicked: financialMenu.open()
+                Menu {
+                    id: financialMenu
+                    y: financialMenuButton.height
+                    MenuItem {
+                        CheckBox {
+                            text: 'all'
+                        }
+                    }
+                    MenuItem {
+                        CheckBox {
+                            text: 'authorized'
+                        }
+                    }
+                    MenuItem {
+                        CheckBox {
+                            text: 'pending'
+                        }
+                    }
+                    MenuItem {
+                        CheckBox {
+                            text: 'paid'
+                        }
+                    }
+                    MenuItem {
+                        CheckBox {
+                            text: 'part paid'
+                        }
+                    }
+                    MenuItem {
+                        CheckBox {
+                            text: 'unpaid'
+                        }
+                    }
+                    MenuItem {
+                        CheckBox {
+                            text: 'refunded'
+                        }
+                    }
+                    MenuItem {
+                        CheckBox {
+                            text: 'part refunded'
+                        }
+                    }
+                    MenuItem {
+                        CheckBox {
+                            text: 'voided'
+                        }
+                    }
+                }
+            }
+            ToolButton {
+                id: fulfillmentMenuButton
+                text: 'Fulfillment'
+                onClicked: fulfillmentMenu.open()
+                Menu {
+                    id: fulfillmentMenu
+                    y: fulfillmentMenuButton.height
+                    MenuItem {
+                        CheckBox {
+                            text: 'all'
+                        }
+                    }
+                    MenuItem {
+                        CheckBox {
+                            text: 'shipped'
+                        }
+                    }
+                    MenuItem {
+                        CheckBox {
+                            text: 'partial'
+                        }
+                    }
+                    MenuItem {
+                        CheckBox {
+                            text: 'unshipped'
+                        }
+                    }
+                }
             }
             Item {
                 Layout.fillWidth: true
             }
             ToolButton {
-                text: "Settings"
-                onClicked: settingsMenu.open()
                 id: settingsMenuButton
+                text: 'Settings'
+                onClicked: settingsMenu.open()
                 Menu {
                     id: settingsMenu
                     y: settingsMenuButton.height
                     MenuItem {
-                        text: "Shopify"
+                        text: 'Shopify'
                         onClicked:  {
                             settingsPopup.settings = shopify.settings
                             settingsPopup.open()
                         }
                     }
                     MenuItem {
-                        text: "Xero"
+                        text: 'Xero'
                         onClicked: {
                             settingsPopup.settings = xero.settings
                             settingsPopup.open()
@@ -56,12 +167,34 @@ ApplicationWindow {
         anchors.fill: parent
         currentIndex: tabBar.currentIndex
 
-        Page1 {
+        Page {
+            id: orderSheet
+            ListView {
+                id: orderList
+                anchors.fill: parent
+                model: shopify.orders
+                delegate: ItemDelegate {
+                    width: parent.width
+                    RowLayout {
+                        anchors.fill: parent
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            leftPadding: 10
+                            text: modelData.name + ' (' + modelData.orderStatusString + ',' + modelData.financialStatusString + ',' + modelData.fulfillmentStatusString + ')'
+                        }
+                    }
+
+                    highlighted: ListView.isCurrentItem
+                    onClicked: orderList.currentIndex = index
+                }
+                ScrollIndicator.vertical: ScrollIndicator { }
+            }
         }
 
         Page {
+            id: page1
             Label {
-                text: qsTr("Second page")
+                text: qsTr('Second page')
                 anchors.centerIn: parent
             }
         }
@@ -111,10 +244,10 @@ ApplicationWindow {
         id: tabBar
         currentIndex: swipeView.currentIndex
         TabButton {
-            text: qsTr("First")
+            text: qsTr("Shopify")
         }
         TabButton {
-            text: qsTr("Second")
+            text: qsTr("Xero")
         }
     }
 }
