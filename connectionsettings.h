@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QSettings>
 
-class ConnectionSettings : public QObject
+class SimpleHttpConnectionSettings : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QString section READ section WRITE setSection NOTIFY sectionChanged)
@@ -13,8 +13,8 @@ class ConnectionSettings : public QObject
     Q_PROPERTY(QString password READ password WRITE setPassword NOTIFY passwordChanged)
 
 public:
-    explicit ConnectionSettings(QObject *parent = 0);
-    ConnectionSettings(const QString& section, QObject *parent = 0);
+    explicit SimpleHttpConnectionSettings(QObject *parent = 0);
+    SimpleHttpConnectionSettings(const QString& section, QObject *parent = 0);
 
     QString section() const;
     void setSection( const QString& section );
@@ -37,6 +37,32 @@ signals:
     void changed();
 
 public slots:
+
+private:
+    QString section_;
+    QSettings settings_;
+};
+
+class OAuthZeroLeggedConnectionSettings : public QObject
+{
+    Q_OBJECT
+
+    Q_PROPERTY(QString consumerKey READ consumerKey WRITE setConsumerKey NOTIFY consumerKeyChanged)
+    Q_PROPERTY(QString rsaPrivateKey READ rsaPrivateKey WRITE setRsaPrivateKey NOTIFY rsaPrivateKeyChanged)
+
+public:
+    explicit OAuthZeroLeggedConnectionSettings(QObject *parent = 0);
+    OAuthZeroLeggedConnectionSettings(const QString& section, QObject *parent = 0);
+
+    QString consumerKey() const;
+    void setConsumerKey(const QString& consumerKey);
+
+    QString rsaPrivateKey() const;
+    void setRsaPrivateKey(const QString& rsaPrivateKey);
+
+signals:
+    void consumerKeyChanged();
+    void rsaPrivateKeyChanged();
 
 private:
     QString section_;

@@ -5,7 +5,9 @@ CONFIG += c++11
 SOURCES += main.cpp \
     ConnectionSettings.cpp \
     Shopify.cpp \
-    Xero.cpp
+    Xero.cpp \
+    OAuthZeroLegged.cpp \
+    XeroInvoice.cpp
 
 RESOURCES += qml.qrc
 
@@ -18,4 +20,13 @@ include(deployment.pri)
 HEADERS += \
     ConnectionSettings.h \
     Shopify.h \
-    Xero.h
+    Xero.h \
+    OAuthZeroLegged.h \
+    XeroInvoice.h
+
+# LIBS += -lcrypto -lssl -lubsec
+LIBS += -LC:/OpenSSL-Win32/lib -llibeay32 -lssleay32
+
+INCLUDEPATH += C:/OpenSSL-Win32/include
+
+DISTFILES +=

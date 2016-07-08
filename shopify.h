@@ -87,10 +87,6 @@ public:
 
     QStringList tags() const;
 
-signals:
-
-public slots:
-
 private:
     QJsonObject json_;
 };
@@ -99,7 +95,7 @@ class Shopify : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(ConnectionState state READ state NOTIFY stateChanged)
-    Q_PROPERTY(ConnectionSettings* settings READ settings)
+    Q_PROPERTY(SimpleHttpConnectionSettings* settings READ settings)
     Q_PROPERTY(QList<QObject*> orders READ orders NOTIFY ordersLoaded)
 
 public:
@@ -115,7 +111,7 @@ public:
     explicit Shopify(QObject *parent = 0);
 
     ConnectionState state() const;
-    ConnectionSettings* settings();
+    SimpleHttpConnectionSettings* settings();
     QList<QObject*> orders() const;
 
 signals:
@@ -125,7 +121,9 @@ signals:
 public slots:
     void load();
     void abort();
-    void handleFinished(QNetworkReply* reply);
+
+private slots:
+    void onReplyFinished(QNetworkReply* reply);
 
 private:
     void setState(ConnectionState state);
@@ -133,7 +131,7 @@ private:
     QUrl makeGetUrl(const QString& entity) const;
 
     ConnectionState state_;
-    ConnectionSettings settings_;
+    SimpleHttpConnectionSettings settings_;
     QNetworkAccessManager http_;
     QNetworkReply* currentReply_;
     QList<QObject*> orders_;

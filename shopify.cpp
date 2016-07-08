@@ -249,7 +249,7 @@ Shopify::Shopify(QObject *parent)
     , currentReply_(nullptr)
 {
     qDebug() << "creating shopify";
-    QObject::connect(&http_, &QNetworkAccessManager::finished, this, &Shopify::handleFinished);
+    QObject::connect(&http_, &QNetworkAccessManager::finished, this, &Shopify::onReplyFinished);
 }
 
 Shopify::ConnectionState Shopify::state() const
@@ -257,7 +257,7 @@ Shopify::ConnectionState Shopify::state() const
     return state_;
 }
 
-ConnectionSettings* Shopify::settings()
+SimpleHttpConnectionSettings* Shopify::settings()
 {
     return &settings_;
 }
@@ -291,7 +291,7 @@ void Shopify::abort()
     currentReply_->abort();
 }
 
-void Shopify::handleFinished(QNetworkReply* reply)
+void Shopify::onReplyFinished(QNetworkReply* reply)
 {
     reply->deleteLater();
     currentReply_ = nullptr;
@@ -320,7 +320,6 @@ void Shopify::handleFinished(QNetworkReply* reply)
     }
 
     emit ordersLoaded();
-
 }
 
 void Shopify::setState(ConnectionState state)
@@ -332,6 +331,8 @@ void Shopify::setState(ConnectionState state)
 QUrl Shopify::makeBaseUrl() const
 {
    QUrl url(settings_.url());
+   if (url.scheme().isEmpty())
+       url.setScheme("https");
    url.setUserName(settings_.apiKey());
    url.setPassword(settings_.password());
    return url;

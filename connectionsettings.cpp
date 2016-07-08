@@ -3,12 +3,16 @@
 #include <QDebug>
 
 
-ConnectionSettings::ConnectionSettings(QObject *parent)
-    : ConnectionSettings("default", parent)
+//
+// SimpleHttpConnectionSettings
+//
+
+SimpleHttpConnectionSettings::SimpleHttpConnectionSettings(QObject *parent)
+    : SimpleHttpConnectionSettings("default", parent)
 {
 }
 
-ConnectionSettings::ConnectionSettings(const QString& section, QObject *parent)
+SimpleHttpConnectionSettings::SimpleHttpConnectionSettings(const QString& section, QObject *parent)
     : QObject(parent)
     , settings_("BusyBot", "Xeroify")
 {
@@ -16,17 +20,17 @@ ConnectionSettings::ConnectionSettings(const QString& section, QObject *parent)
 
     settings_.beginGroup(section);
 
-    QObject::connect( this, &ConnectionSettings::urlChanged, &ConnectionSettings::changed );
-    QObject::connect( this, &ConnectionSettings::apiKeyChanged, &ConnectionSettings::changed );
-    QObject::connect( this, &ConnectionSettings::passwordChanged, &ConnectionSettings::changed );
+    QObject::connect( this, &SimpleHttpConnectionSettings::urlChanged, &SimpleHttpConnectionSettings::changed );
+    QObject::connect( this, &SimpleHttpConnectionSettings::apiKeyChanged, &SimpleHttpConnectionSettings::changed );
+    QObject::connect( this, &SimpleHttpConnectionSettings::passwordChanged, &SimpleHttpConnectionSettings::changed );
 }
 
-QString ConnectionSettings::section() const
+QString SimpleHttpConnectionSettings::section() const
 {
     return section_;
 }
 
-void ConnectionSettings::setSection( const QString& section )
+void SimpleHttpConnectionSettings::setSection( const QString& section )
 {
     if ( section_ == section ) return;
     section_ = section;
@@ -37,12 +41,12 @@ void ConnectionSettings::setSection( const QString& section )
     emit passwordChanged();
 }
 
-QString ConnectionSettings::url() const
+QString SimpleHttpConnectionSettings::url() const
 {
     return settings_.value("url").toString();
 }
 
-void ConnectionSettings::setUrl( const QString& url )
+void SimpleHttpConnectionSettings::setUrl( const QString& url )
 {
     qDebug() << "setting url: " << url;
     if ( this->url() == url ) return;
@@ -50,26 +54,69 @@ void ConnectionSettings::setUrl( const QString& url )
     emit urlChanged();
 }
 
-QString ConnectionSettings::apiKey() const
+QString SimpleHttpConnectionSettings::apiKey() const
 {
     return settings_.value("apiKey").toString();
 }
 
-void ConnectionSettings::setApiKey( const QString& apiKey )
+void SimpleHttpConnectionSettings::setApiKey( const QString& apiKey )
 {
     if ( this->apiKey() == apiKey ) return;
     settings_.setValue("apiKey", apiKey);
     emit apiKeyChanged();
 }
 
-QString ConnectionSettings::password() const
+QString SimpleHttpConnectionSettings::password() const
 {
     return settings_.value("password").toString();
 }
 
-void ConnectionSettings::setPassword( const QString& password )
+void SimpleHttpConnectionSettings::setPassword( const QString& password )
 {
     if ( this->password() == password ) return;
     settings_.setValue("password", password);
     emit passwordChanged();
 }
+
+
+//
+// OAuthZeroLeggedConnectionSettings
+//
+
+
+OAuthZeroLeggedConnectionSettings::OAuthZeroLeggedConnectionSettings(QObject *parent)
+    : OAuthZeroLeggedConnectionSettings("default", parent)
+{
+}
+
+OAuthZeroLeggedConnectionSettings::OAuthZeroLeggedConnectionSettings(const QString& section, QObject *parent)
+    : QObject(parent)
+    , settings_("BusyBot", "Xeroify")
+{
+    settings_.beginGroup(section);
+}
+
+QString OAuthZeroLeggedConnectionSettings::consumerKey() const
+{
+    return settings_.value("consumerKey").toString();
+}
+
+void OAuthZeroLeggedConnectionSettings::setConsumerKey(const QString& consumerKey)
+{
+    if ( this->consumerKey() == consumerKey ) return;
+    settings_.setValue("consumerKey", consumerKey);
+    emit consumerKeyChanged();
+}
+
+QString OAuthZeroLeggedConnectionSettings::rsaPrivateKey() const
+{
+    return settings_.value("rsaPrivateKey").toString();
+}
+
+void OAuthZeroLeggedConnectionSettings::setRsaPrivateKey(const QString& rsaPrivateKey)
+{
+    if ( this->rsaPrivateKey() == rsaPrivateKey ) return;
+    settings_.setValue("rsaPrivateKey", rsaPrivateKey);
+    emit rsaPrivateKeyChanged();
+}
+

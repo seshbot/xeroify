@@ -4,7 +4,7 @@ import QtQuick.Layouts 1.0
 import BusyBot 1.0
 
 ColumnLayout {
-    property ConnectionSettings settings: ConnectionSettings { }
+    property SimpleHttpConnectionSettings settings: SimpleHttpConnectionSettings { }
 
     GridLayout {
         columns: 2

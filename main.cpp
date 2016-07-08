@@ -21,7 +21,8 @@ int main(int argc, char *argv[])
 
     qmlRegisterType<Shopify>("BusyBot", 1, 0, "Shopify");
     qmlRegisterType<Xero>("BusyBot", 1, 0, "Xero");
-    qmlRegisterType<ConnectionSettings>("BusyBot", 1, 0, "ConnectionSettings");
+    qmlRegisterType<SimpleHttpConnectionSettings>("BusyBot", 1, 0, "SimpleHttpConnectionSettings");
+    qmlRegisterType<OAuthZeroLeggedConnectionSettings>("BusyBot", 1, 0, "OAuthZeroLeggedConnectionSettings");
 
     QQmlApplicationEngine engine;
 
