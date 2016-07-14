@@ -120,3 +120,55 @@ void OAuthZeroLeggedConnectionSettings::setRsaPrivateKey(const QString& rsaPriva
     emit rsaPrivateKeyChanged();
 }
 
+//
+// OAuth2Settings
+//
+
+OAuth2Settings::OAuth2Settings(QObject *parent)
+    : OAuth2Settings("default", parent)
+{
+
+}
+
+OAuth2Settings::OAuth2Settings(const QString& section, QObject *parent)
+    : QObject(parent)
+    , settings_("BusyBot", "MakeLeaps")
+{
+    settings_.beginGroup(section);
+}
+
+QString OAuth2Settings::clientId() const
+{
+    return settings_.value("clientId").toString();
+}
+
+void OAuth2Settings::setClientId(const QString& clientId)
+{
+    if ( this->clientId() == clientId ) return;
+    settings_.setValue("clientId", clientId);
+    emit clientIdChanged();
+}
+
+QString OAuth2Settings::clientSecret() const
+{
+    return settings_.value("clientSecret").toString();
+}
+
+void OAuth2Settings::setClientSecret(const QString& clientSecret)
+{
+    if ( this->clientSecret() == clientSecret ) return;
+    settings_.setValue("clientSecret", clientSecret);
+    emit clientSecretChanged();
+}
+
+QString OAuth2Settings::accessToken() const
+{
+    return settings_.value("accessToken").toString();
+}
+
+void OAuth2Settings::setAccessToken(const QString& accessToken)
+{
+    if ( this->accessToken() == accessToken ) return;
+    settings_.setValue("accessToken", accessToken);
+    emit accessTokenChanged();
+}

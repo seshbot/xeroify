@@ -7,7 +7,9 @@ SOURCES += main.cpp \
     Shopify.cpp \
     Xero.cpp \
     OAuthZeroLegged.cpp \
-    XeroInvoice.cpp
+    XeroInvoice.cpp \
+    MakeLeaps.cpp \
+    OAuth2WithClientCredentialsGrant.cpp
 
 RESOURCES += qml.qrc
 
@@ -22,7 +24,9 @@ HEADERS += \
     Shopify.h \
     Xero.h \
     OAuthZeroLegged.h \
-    XeroInvoice.h
+    XeroInvoice.h \
+    MakeLeaps.h \
+    OAuth2WithClientCredentialsGrant.h
 
 # LIBS += -lcrypto -lssl -lubsec
 LIBS += -LC:/OpenSSL-Win32/lib -llibeay32 -lssleay32

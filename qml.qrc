@@ -3,5 +3,6 @@
         <file>main.qml</file>
         <file>ShopifyApiSettingsPanel.qml</file>
         <file>XeroApiSettingsPanel.qml</file>
+        <file>MakeLeapsApiSettingsPanel.qml</file>
     </qresource>
 </RCC>

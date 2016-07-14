@@ -12,6 +12,7 @@
 
 #include <Shopify.h>
 #include <Xero.h>
+#include <MakeLeaps.h>
 #include <ConnectionSettings.h>
 
 int main(int argc, char *argv[])
@@ -19,10 +20,13 @@ int main(int argc, char *argv[])
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QGuiApplication app(argc, argv);
 
-    qmlRegisterType<Shopify>("BusyBot", 1, 0, "Shopify");
-    qmlRegisterType<Xero>("BusyBot", 1, 0, "Xero");
     qmlRegisterType<SimpleHttpConnectionSettings>("BusyBot", 1, 0, "SimpleHttpConnectionSettings");
     qmlRegisterType<OAuthZeroLeggedConnectionSettings>("BusyBot", 1, 0, "OAuthZeroLeggedConnectionSettings");
+    qmlRegisterType<OAuth2Settings>("BusyBot", 1, 0, "OAuth2Settings");
+    qmlRegisterType<OAuth2WithClientCredentialsGrant>("BusyBot", 1, 0, "OAuth2WithClientCredentialsGrant");
+    qmlRegisterType<Shopify>("BusyBot", 1, 0, "Shopify");
+    qmlRegisterType<Xero>("BusyBot", 1, 0, "Xero");
+    qmlRegisterType<MakeLeaps>("BusyBot", 1, 0, "MakeLeaps");
 
     QQmlApplicationEngine engine;
 

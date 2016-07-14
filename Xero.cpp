@@ -109,10 +109,10 @@ void Xero::onReplyFinished(QNetworkReply* reply)
 
    qDebug().nospace() << "xero response (" << entities.size() << " entities)";
    invoices_.clear();
-   for (auto entity: entities)
-   {
-       //invoices_.push_back(new XeroInvoice(entity.toObject()));
-   }
+//   for (auto entity: entities)
+//   {
+//       invoices_.push_back(new XeroInvoice(entity.toObject()));
+//   }
 
    emit invoicesLoaded();
 }

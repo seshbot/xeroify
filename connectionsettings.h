@@ -69,4 +69,35 @@ private:
     QSettings settings_;
 };
 
+class OAuth2Settings : public QObject
+{
+    Q_OBJECT
+
+    Q_PROPERTY(QString clientId READ clientId WRITE setClientId NOTIFY clientIdChanged)
+    Q_PROPERTY(QString clientSecret READ clientSecret WRITE setClientSecret NOTIFY clientSecretChanged)
+    Q_PROPERTY(QString accessToken READ accessToken WRITE setAccessToken NOTIFY accessTokenChanged)
+
+public:
+    explicit OAuth2Settings(QObject *parent = 0);
+    OAuth2Settings(const QString& section, QObject *parent = 0);
+
+    QString clientId() const;
+    void setClientId(const QString& clientId);
+
+    QString clientSecret() const;
+    void setClientSecret(const QString& clientSecret);
+
+    QString accessToken() const;
+    void setAccessToken(const QString& accessToken);
+
+signals:
+    void clientIdChanged();
+    void clientSecretChanged();
+    void accessTokenChanged();
+
+private:
+    QString section_;
+    QSettings settings_;
+};
+
 #endif // CONNECTIONSETTINGS_H

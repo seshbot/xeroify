@@ -12,6 +12,7 @@ ApplicationWindow {
 
     property Shopify shopify: Shopify { }
     property Xero xero: Xero { }
+    property MakeLeaps makeLeaps: MakeLeaps { }
 
     header: ToolBar {
         RowLayout {
@@ -29,10 +30,10 @@ ApplicationWindow {
                     }
                     else
                     {
-                        if (xero.state === Shopify.STATE_LOADING) {
-                            xero.abort()
+                        if (makeLeaps.state === MakeLeaps.STATE_LOADING) {
+                            makeLeaps.abort()
                         } else {
-                            xero.load()
+                            makeLeaps.load()
                         }
                     }
                 }
@@ -52,8 +53,12 @@ ApplicationWindow {
                         onClicked: settingsPopup.openShopify(shopify.settings)
                     }
                     MenuItem {
-                        text: 'Xero'
-                        onClicked: settingsPopup.openXero(xero.settings)
+                        text: 'MakeLeaps'
+                        onClicked: {
+                            console.log('makeLeaps: ', makeLeaps)
+                            console.log('makeLeaps settings: ', makeLeaps.settings)
+                            settingsPopup.openMakeLeaps(makeLeaps.settings)
+                        }
                     }
                 }
             }
@@ -88,11 +93,33 @@ ApplicationWindow {
                 ScrollIndicator.vertical: ScrollIndicator { }
             }
         }
-
         Page {
             id: invoiceSheet
             ListView {
                 id: invoiceList
+                anchors.fill: parent
+                model: xero.invoices
+                delegate: ItemDelegate {
+                    width: parent.width
+                    RowLayout {
+                        anchors.fill: parent
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            leftPadding: 10
+                            text: modelData.number + ' ' + modelData.reference
+                        }
+                    }
+
+                    highlighted: ListView.isCurrentItem
+                    onClicked: orderList.currentIndex = index
+                }
+                ScrollIndicator.vertical: ScrollIndicator { }
+            }
+        }
+        Page {
+            id: makeLeapsPage
+            ListView {
+                id: makeLeapsList
                 anchors.fill: parent
                 model: xero.invoices
                 delegate: ItemDelegate {
@@ -118,6 +145,7 @@ ApplicationWindow {
         id: settingsPopup
         property SimpleHttpConnectionSettings shopifyApiSettings
         property OAuthZeroLeggedConnectionSettings xeroApiSettings
+        property OAuth2Settings makeLeapsApiSettings
         x: (parent.width - width) / 2
         //y: parent.header / 6
         modal: true
@@ -138,8 +166,13 @@ ApplicationWindow {
                 }
                 XeroApiSettingsPanel {
                     id: xeroApiSettingsPanel
-                    visible: settingsPopup.xeroApiSettings != null
+                    visible: false
                     settings: settingsPopup.xeroApiSettings
+                }
+                MakeLeapsApiSettingsPanel {
+                    id: makeLeapsApiSettingsPanel
+                    visible: settingsPopup.makeLeapsApiSettings != null
+                    settings: settingsPopup.makeLeapsApiSettings
                 }
                 RowLayout {
                     anchors.right: parent.right
@@ -162,15 +195,27 @@ ApplicationWindow {
         function save() {
             if (shopifyApiSettings) shopifyApiSettingsPanel.save()
             if (xeroApiSettings) xeroApiSettingsPanel.save()
+            if (makeLeapsApiSettings) {
+                makeLeapsApiSettingsPanel.save()
+                makeLeaps.reloadAccessToken()
+            }
         }
         function openShopify(settings) {
             shopifyApiSettings = settings
             xeroApiSettings = null
+            makeLeapsApiSettings = null
             open()
         }
         function openXero(settings) {
             shopifyApiSettings = null
             xeroApiSettings = settings
+            makeLeapsApiSettings = null
+            open()
+        }
+        function openMakeLeaps(settings) {
+            shopifyApiSettings = null
+            xeroApiSettings = null
+            makeLeapsApiSettings = settings
             open()
         }
     }
@@ -183,6 +228,9 @@ ApplicationWindow {
         }
         TabButton {
             text: qsTr("Xero")
+        }
+        TabButton {
+            text: qsTr("MakeLeaps")
         }
     }
 }

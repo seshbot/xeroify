@@ -219,7 +219,7 @@ QByteArray buildAuthorizationHeader(const QList<QPair<QString, QString>>& oauthP
 
 
 //
-// OAuthOneLegged
+// OAuthZeroLegged
 //
 
 OAuthZeroLegged::OAuthZeroLegged(const QString& consumerKey, const QString& rsaPrivateKey)
