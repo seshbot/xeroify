@@ -27,6 +27,9 @@ int main(int argc, char *argv[])
     qmlRegisterType<Shopify>("BusyBot", 1, 0, "Shopify");
     qmlRegisterType<Xero>("BusyBot", 1, 0, "Xero");
     qmlRegisterType<MakeLeaps>("BusyBot", 1, 0, "MakeLeaps");
+    qmlRegisterType<MakeLeapsEndpoint>("BusyBot", 1, 0, "MakeLeapsEndpoint");
+    qmlRegisterUncreatableType<MakeLeapsResourceProperty>("BusyBot", 1, 0, "MakeLeapsResourceProperty", "Cannot create MakeLeapsResourceProperty");
+    qmlRegisterUncreatableType<JsonValue>("BusyBot", 1, 0, "JsonValue", "Cannot create JSONValue");
 
     QQmlApplicationEngine engine;
 
