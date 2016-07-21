@@ -96,6 +96,7 @@ private:
 // - collection (client/)
 // -
 
+class MakeLeaps;
 class MakeLeapsResource;
 class MakeLeapsEndpoint;
 
@@ -122,7 +123,7 @@ public:
    };
    Q_ENUMS(Type)
 
-   MakeLeapsResourceProperty(const QString& name, const QJsonValue& value, QObject* parent = 0);
+   MakeLeapsResourceProperty(MakeLeaps& api, const QString& name, const QJsonValue& value, QObject* parent = 0);
 
    QString name() const { return name_; }
    Type type() const { return type_; }
@@ -145,6 +146,7 @@ public:
    QList<QObject*> properties() { return properties_; }
 
 private:
+   MakeLeaps* api_;
    QString name_;
    Type type_;
    MakeLeapsResource* resource_;
@@ -168,13 +170,14 @@ class MakeLeapsResource : public QObject
    Q_PROPERTY(QList<QObject*> properties READ properties CONSTANT)
 
 public:
-   explicit MakeLeapsResource(const QJsonObject& object, QObject* parent = 0)
+   explicit MakeLeapsResource(MakeLeaps& api, const QJsonObject& object, QObject* parent = 0)
       : QObject(parent)
+      , api_(&api)
       , object_(object)
    {
       for (auto key: object_.keys())
       {
-         properties_.append( new MakeLeapsResourceProperty( key, object_[key], this ) );
+         properties_.append( new MakeLeapsResourceProperty( *api_, key, object_[key], this ) );
       }
    }
 
@@ -187,6 +190,7 @@ public:
    JsonValue* operator[](const QString& key) { return new JsonValue( object_[key], this ); }
 
 private:
+   MakeLeaps* api_;
    QJsonObject object_;
    QList<QObject*> properties_;
 };
@@ -207,34 +211,40 @@ class MakeLeapsEndpoint : public QObject
 {
    Q_OBJECT
    Q_PROPERTY(State state READ state NOTIFY stateChanged)
-   Q_PROPERTY(bool isModifyable READ isModifyable CONSTANT)
+   Q_PROPERTY(bool isModifyable READ isModifyable NOTIFY isModifyableChanged)
    Q_PROPERTY(QString url READ urlString CONSTANT)
-   Q_PROPERTY(MakeLeapsResource* resource READ resource CONSTANT)
-   Q_PROPERTY(QList<QObject*> resources READ resources CONSTANT)
+   Q_PROPERTY(MakeLeapsResource* resource READ resource NOTIFY resourceChanged)
+   Q_PROPERTY(QList<QObject*> resources READ resources NOTIFY resourcesChanged)
 
 public:
    enum State
    {
       STATE_INVALID,
       STATE_LOADING,
+      STATE_ABORTING,
       STATE_LOADED,
+      STATE_NEEDS_AUTHENTICATION,
       STATE_ERROR,
    };
    Q_ENUMS(State)
 
    MakeLeapsEndpoint(QObject* parent = 0)
       : QObject(parent)
+      , api_(nullptr)
       , state_(STATE_INVALID)
       , isModifyable_(false)
       , resource_(nullptr)
+      , currentReply_(nullptr)
    { }
 
-   MakeLeapsEndpoint(const QUrl& url, bool isModifyable, QObject* parent = 0)
+   MakeLeapsEndpoint(MakeLeaps& api, const QUrl& url, bool isModifyable, QObject* parent = 0)
       : QObject(parent)
+      , api_(&api)
       , state_(STATE_LOADING)
       , url_(url)
       , isModifyable_(isModifyable)
       , resource_(nullptr)
+      , currentReply_(nullptr)
    { }
 
    QUrl url() const { return url_; }
@@ -249,21 +259,33 @@ public:
 
    QList<QObject*> resources() const { return resources_; }
 
-   void setResource(MakeLeapsResource* resource) { resource_ = resource; setState(STATE_LOADED); }
-   void setResources(QList<QObject*> resources) { resources_ = resources; setState(STATE_LOADED); }
+   void setResource(MakeLeapsResource* resource) { resource_ = resource; setState(STATE_LOADED); emit resourceChanged(); }
+   void setResources(QList<QObject*> resources) { resources_ = resources; setState(STATE_LOADED); emit resourcesChanged(); }
 
 signals:
    void stateChanged();
+   void isModifyableChanged();
+   void resourceChanged();
+   void resourcesChanged();
+
+public slots:
+   void load();
+   void abort();
+
+public slots:
+   void onReplyFinished();
 
 private:
    void setState(State state) { if (state_ != state) { state_ = state; emit stateChanged(); } }
 
    // JsonValue object_; // impl
+   MakeLeaps* api_;
    State state_;
    QUrl url_;
    bool isModifyable_;
    MakeLeapsResource* resource_;
    QList<QObject*> resources_;
+   QNetworkReply* currentReply_;
 
 };
 
@@ -273,7 +295,7 @@ class MakeLeaps : public QObject
    Q_OBJECT
    Q_PROPERTY(OAuth2Settings* settings READ settings)
    Q_PROPERTY(ConnectionState state READ state NOTIFY stateChanged)
-   Q_PROPERTY(MakeLeapsEndpoint* endpoint READ endpoint NOTIFY endpointChanged)
+   Q_PROPERTY(MakeLeapsEndpoint* root READ root NOTIFY rootChanged)
 
 public:
    enum ConnectionState
@@ -290,11 +312,11 @@ public:
 
    ConnectionState state() const;
    OAuth2Settings* settings();
-   MakeLeapsEndpoint* endpoint();
+   MakeLeapsEndpoint* root();
 
 signals:
    void stateChanged();
-   void endpointChanged();
+   void rootChanged();
 
 public slots:
    void reloadAccessToken();
@@ -303,18 +325,19 @@ public slots:
 
 private slots:
    void onAuthStateChanged();
-   void onReplyFinished(QNetworkReply* reply);
+   void onRootEndpointStateChanged();
 
 private:
+   friend class MakeLeapsEndpoint;
+
    void setState(ConnectionState state);
-   QNetworkReply* loadEntity(const QString& entity, const QString& entityId = "");
+   QNetworkReply* loadEndpointUrl(const QUrl& url);
 
    ConnectionState state_;
    QNetworkAccessManager http_;
    OAuth2Settings settings_;
    OAuth2WithClientCredentialsGrant oauth_;
-   QNetworkReply* currentReply_;
-   MakeLeapsEndpoint* currentEndpoint_;
+   MakeLeapsEndpoint rootEndpoint_;
 };
 
 

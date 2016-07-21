@@ -190,7 +190,7 @@ ApplicationWindow {
             }
         }
         MakeLeapsBrowser {
-            endpoint: makeLeaps.endpoint
+            endpoint: makeLeaps.root
         }
     }
 

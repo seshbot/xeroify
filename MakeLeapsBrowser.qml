@@ -45,7 +45,14 @@ Page {
                     text: modelData.name
                     highlighted: singleResourcePage.selectedResourceProperty === modelData
                     onClicked: {
-                        singleResourcePage.selectedResourceProperty = modelData
+                        if (modelData.type === MakeLeapsResourceProperty.TYPE_ENDPOINT)
+                        {
+                            root.endpoint = modelData
+                        }
+                        else
+                        {
+                            singleResourcePage.selectedResourceProperty = modelData
+                        }
                     }
                 }
                 ScrollIndicator.vertical: ScrollIndicator { }

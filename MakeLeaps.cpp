@@ -82,15 +82,15 @@ auto MAKELEAPS_API_BASE = "https://api.makeleaps.com/api/";
 // MakeLeapsResourceProperty
 //
 
-MakeLeapsResourceProperty::MakeLeapsResourceProperty(const QString& name, const QJsonValue& value, QObject* parent)
-   : QObject(parent), name_(name), resource_(nullptr), endpoint_(nullptr), value_(value)
+MakeLeapsResourceProperty::MakeLeapsResourceProperty(MakeLeaps& api, const QString& name, const QJsonValue& value, QObject* parent)
+   : QObject(parent), api_(&api), name_(name), resource_(nullptr), endpoint_(nullptr), value_(value)
 {
    // "https://..." is an endpoint
    if (value_.type() == QJsonValue::String && value_.toString().startsWith(MAKELEAPS_API_BASE))
    {
       qDebug() << name << ": endpoint";
       type_ = TYPE_ENDPOINT;
-      endpoint_ = new MakeLeapsEndpoint(value_.toString(), false, this);
+      endpoint_ = new MakeLeapsEndpoint(*api_, value_.toString(), false, this);
    }
    // [ { }, ... ]
    else if (value_.type() == QJsonValue::Array)
@@ -120,7 +120,7 @@ MakeLeapsResourceProperty::MakeLeapsResourceProperty(const QString& name, const 
          type_ = TYPE_RESOURCE_ARRAY;
          for (auto v: array)
          {
-            resources_.append(new MakeLeapsResource(v.toObject(), this));
+            resources_.append(new MakeLeapsResource(*api_, v.toObject(), this));
          }
       }
       // [ { ... }, ... ] or [ "", ... ]
@@ -129,7 +129,7 @@ MakeLeapsResourceProperty::MakeLeapsResourceProperty(const QString& name, const 
          type_ = TYPE_VALUE_ARRAY;
          for (auto v: array)
          {
-            properties_.append(new MakeLeapsResourceProperty("", v, this));
+            properties_.append(new MakeLeapsResourceProperty(*api_, "", v, this));
          }
       }
    }
@@ -139,7 +139,7 @@ MakeLeapsResourceProperty::MakeLeapsResourceProperty(const QString& name, const 
       qDebug() << name << ": object";
 
       type_ = TYPE_RESOURCE;
-      resource_ = new MakeLeapsResource(value_.toObject(), this);
+      resource_ = new MakeLeapsResource(*api_, value_.toObject(), this);
    }
    // ""
    else
@@ -159,13 +159,12 @@ MakeLeaps::MakeLeaps(QObject *parent)
    : QObject(parent)
    , state_(STATE_IDLE)
    , oauth_(MAKELEAPS_OAUTH_TOKEN_ENDPOINT, settings_.clientId(), settings_.clientSecret(), settings_.accessToken())
-   , currentReply_(nullptr)
-   , currentEndpoint_(nullptr)
+   , rootEndpoint_(*this, QUrl(MAKELEAPS_API_BASE), false, this)
 {
    qDebug() << "creating makeleaps";
-   connect(&http_, QNetworkAccessManager::finished, this, MakeLeaps::onReplyFinished);
    connect(&http_, QNetworkAccessManager::authenticationRequired, &oauth_, OAuth2WithClientCredentialsGrant::onAuthenticationRequired);
    connect(&oauth_, OAuth2WithClientCredentialsGrant::stateChanged, this, MakeLeaps::onAuthStateChanged);
+   connect(&rootEndpoint_, MakeLeapsEndpoint::stateChanged, this, MakeLeaps::onRootEndpointStateChanged);
 }
 
 MakeLeaps::ConnectionState MakeLeaps::state() const
@@ -178,9 +177,9 @@ OAuth2Settings* MakeLeaps::settings()
     return &settings_;
 }
 
-MakeLeapsEndpoint* MakeLeaps::endpoint()
+MakeLeapsEndpoint* MakeLeaps::root()
 {
-   return currentEndpoint_;
+   return &rootEndpoint_;
 }
 
 void MakeLeaps::reloadAccessToken()
@@ -190,30 +189,16 @@ void MakeLeaps::reloadAccessToken()
 
 void MakeLeaps::load()
 {
-    if (STATE_LOADING == state_) return;
-
-    qDebug() << "loading makeleaps...";
-    setState(STATE_LOADING);
-
-    currentReply_ = loadEntity("Invoices");
+    rootEndpoint_.load();
 }
 
 void MakeLeaps::abort()
 {
-    if (STATE_LOADING != state_) return;
-
-    qDebug() << "aborting...";
-    setState(STATE_ABORTING);
-    currentReply_->abort();
+   rootEndpoint_.abort();
 }
 
-QNetworkReply* MakeLeaps::loadEntity(const QString& entity, const QString& entityId)
+QNetworkReply* MakeLeaps::loadEndpointUrl(const QUrl& url)
 {
-   (void)entity;
-   (void)entityId;
-
-   auto url = QUrl { QString(MAKELEAPS_API_BASE) };
-
    auto request = QNetworkRequest { url };
    request.setRawHeader( "Accept", "application/json" );
 
@@ -239,6 +224,13 @@ void MakeLeaps::onAuthStateChanged()
    case OAuth2WithClientCredentialsGrant::STATE_AUTHENTICATED:
       qDebug() << "OAuth authenticated: " << oauth_.accessToken();
       settings_.setAccessToken( oauth_.accessToken() );
+
+      if ( rootEndpoint_.state() == MakeLeapsEndpoint::STATE_NEEDS_AUTHENTICATION )
+      {
+         qDebug() << "Reloading root endpoint";
+         rootEndpoint_.load();
+      }
+
       setState( STATE_IDLE );
       break;
    case OAuth2WithClientCredentialsGrant::STATE_ERROR:
@@ -247,6 +239,24 @@ void MakeLeaps::onAuthStateChanged()
       break;
    default:
       qWarning() << "unrecognised OAuth state";
+   }
+}
+
+void MakeLeaps::onRootEndpointStateChanged()
+{
+   if ( rootEndpoint_.state() == MakeLeapsEndpoint::STATE_ERROR )
+   {
+      setState(MakeLeaps::STATE_ERROR);
+   }
+
+   if ( rootEndpoint_.state() == MakeLeapsEndpoint::STATE_LOADED )
+   {
+      setState(MakeLeaps::STATE_IDLE);
+   }
+
+   if ( rootEndpoint_.state() == MakeLeapsEndpoint::STATE_NEEDS_AUTHENTICATION )
+   {
+      oauth_.reloadAccessToken();
    }
 }
 
@@ -277,35 +287,50 @@ bool AllowHeaderIsModifiable(QNetworkReply* reply)
 
 }
 
-void MakeLeaps::onReplyFinished(QNetworkReply* reply)
+void MakeLeapsEndpoint::load()
 {
-   reply->deleteLater();
-   currentReply_ = nullptr;
+   currentReply_ = api_->loadEndpointUrl(url_);
+   connect(currentReply_, QNetworkReply::finished, this, MakeLeapsEndpoint::onReplyFinished);
+   currentReply_->setParent(this);
 
-   qDebug().nospace() << "got response (" << (reply->isFinished() ? "" : "not ") << "finished)";
-   switch ( reply->error() )
+   setState(STATE_LOADING);
+}
+
+void MakeLeapsEndpoint::abort()
+{
+   setState(STATE_ABORTING);
+   currentReply_->abort();
+}
+
+void MakeLeapsEndpoint::onReplyFinished()
+{
+   qDebug().nospace() << "got response (" << (currentReply_->isFinished() ? "" : "not ") << "finished)";
+   switch ( currentReply_->error() )
    {
    case QNetworkReply::NoError:
       break;
    case QNetworkReply::AuthenticationRequiredError:
-      qDebug() << "Authentication error - re-authenticating";
-      oauth_.reloadAccessToken();
+      qDebug() << "Authentication error - needs reauth";
+      setState( STATE_NEEDS_AUTHENTICATION );
       return;
    default:
-      qDebug() << "Network error: " << reply->errorString();
+      qDebug() << "Network error: " << currentReply_->errorString();
       setState( STATE_ERROR );
       return;
    }
 
-   setState( STATE_IDLE );
-
-   auto data = reply->readAll();
+   auto data = currentReply_->readAll();
    auto json = QJsonDocument::fromJson(data);
 
    qDebug("makeleaps response:\n%s", json.toJson(QJsonDocument::Indented).toStdString().c_str());
 
-   if ( currentEndpoint_ ) currentEndpoint_->deleteLater();
-   currentEndpoint_ = new MakeLeapsEndpoint(reply->request().url(), AllowHeaderIsModifiable(reply), this);
+   auto isModifyable = AllowHeaderIsModifiable(currentReply_);
+
+   if ( isModifyable != isModifyable_ )
+   {
+      isModifyable_ = isModifyable;
+      emit isModifyableChanged();
+   }
 
    auto entityWrapper = json.object();
    if ( entityWrapper["response"].isArray() )
@@ -313,14 +338,14 @@ void MakeLeaps::onReplyFinished(QNetworkReply* reply)
       QList<QObject*> resources;
       for (auto resource: entityWrapper["response"].toArray())
       {
-         resources.append(new MakeLeapsResource(resource.toObject(), currentEndpoint_));
+         resources.append(new MakeLeapsResource(*api_, resource.toObject(), this));
       }
-      currentEndpoint_->setResources(resources);
+      setResources(resources);
    }
    else
    {
-      currentEndpoint_->setResource(new MakeLeapsResource(entityWrapper["response"].toObject(), currentEndpoint_));
+      setResource(new MakeLeapsResource(*api_, entityWrapper["response"].toObject(), this));
    }
 
-   emit endpointChanged();
+   setState( STATE_LOADED );
 }
