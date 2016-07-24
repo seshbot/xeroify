@@ -24,7 +24,7 @@ Xero::Xero(QObject *parent)
    , currentReply_(nullptr)
 {
    qDebug() << "creating shopify";
-   connect(&http_, QNetworkAccessManager::finished, this, onReplyFinished);
+   connect(&http_, &QNetworkAccessManager::finished, this, &Xero::onReplyFinished);
 }
 
 Xero::ConnectionState Xero::state() const

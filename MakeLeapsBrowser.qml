@@ -43,6 +43,7 @@ Page {
                 model: endpoint.resource.properties
                 delegate: ItemDelegate {
                     text: modelData.name
+                    width: parent.width
                     highlighted: singleResourcePage.selectedResourceProperty === modelData
                     onClicked: {
                         if (modelData.type === MakeLeapsResourceProperty.TYPE_ENDPOINT)

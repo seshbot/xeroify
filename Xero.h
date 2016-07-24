@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QNetworkReply>
+#include <QNetworkAccessManager>
 
 #include "ConnectionSettings.h"
 #include "OAuthZeroLegged.h"

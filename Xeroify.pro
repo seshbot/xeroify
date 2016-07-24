@@ -28,9 +28,15 @@ HEADERS += \
     MakeLeaps.h \
     OAuth2WithClientCredentialsGrant.h
 
-# LIBS += -lcrypto -lssl -lubsec
-LIBS += -LC:/OpenSSL-Win32/lib -llibeay32 -lssleay32
-
-INCLUDEPATH += C:/OpenSSL-Win32/include
-
+win32 {
+    # LIBS += -lcrypto -lssl -lubsec
+    LIBS += -LC:/OpenSSL-Win32/lib -llibeay32 -lssleay32
+    INCLUDEPATH += C:/OpenSSL-Win32/include
+}
+# could use macx, and unix:!macx
+unix {
+    # osx: brew install openssl
+    LIBS += -L/usr/local/opt/openssl/lib -lcrypto -lssl
+    INCLUDEPATH += /usr/local/opt/openssl/include
+}
 DISTFILES +=

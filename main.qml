@@ -190,6 +190,9 @@ ApplicationWindow {
             }
         }
         MakeLeapsBrowser {
+            Component.onCompleted: {
+                makeLeaps.load()
+            }
             endpoint: makeLeaps.root
         }
     }

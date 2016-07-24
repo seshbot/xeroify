@@ -26,8 +26,8 @@ OAuth2WithClientCredentialsGrant::OAuth2WithClientCredentialsGrant(const QString
    , clientSecret_( clientSecret )
    , accessToken_( accessToken )
 {
-   connect(&http_, QNetworkAccessManager::finished, this, OAuth2WithClientCredentialsGrant::onAccessTokenRequestFinished);
-   connect(&http_, QNetworkAccessManager::authenticationRequired, this, OAuth2WithClientCredentialsGrant::onAuthenticationRequired);
+   connect(&http_, &QNetworkAccessManager::finished, this, &OAuth2WithClientCredentialsGrant::onAccessTokenRequestFinished);
+   connect(&http_, &QNetworkAccessManager::authenticationRequired, this, &OAuth2WithClientCredentialsGrant::onAuthenticationRequired);
    if (accessToken_.isEmpty() && !clientId_.isEmpty() && !clientSecret_.isEmpty())
    {
       reloadAccessToken();
@@ -76,7 +76,9 @@ QNetworkRequest& OAuth2WithClientCredentialsGrant::authorize(
 {
    (void)op;
    (void)params;
-   request.setRawHeader("Authorization", ("Bearer " + accessToken_).toLatin1());
+   auto authorizeHeader = ("Bearer " + accessToken_).toLatin1();
+   qDebug().nospace() << "setting Authorize=" << authorizeHeader;
+   request.setRawHeader("Authorization", authorizeHeader);
    return request;
 }
 

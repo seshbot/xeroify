@@ -162,9 +162,9 @@ MakeLeaps::MakeLeaps(QObject *parent)
    , rootEndpoint_(*this, QUrl(MAKELEAPS_API_BASE), false, this)
 {
    qDebug() << "creating makeleaps";
-   connect(&http_, QNetworkAccessManager::authenticationRequired, &oauth_, OAuth2WithClientCredentialsGrant::onAuthenticationRequired);
-   connect(&oauth_, OAuth2WithClientCredentialsGrant::stateChanged, this, MakeLeaps::onAuthStateChanged);
-   connect(&rootEndpoint_, MakeLeapsEndpoint::stateChanged, this, MakeLeaps::onRootEndpointStateChanged);
+   connect(&http_, &QNetworkAccessManager::authenticationRequired, &oauth_, &OAuth2WithClientCredentialsGrant::onAuthenticationRequired);
+   connect(&oauth_, &OAuth2WithClientCredentialsGrant::stateChanged, this, &MakeLeaps::onAuthStateChanged);
+   connect(&rootEndpoint_, &MakeLeapsEndpoint::stateChanged, this, &MakeLeaps::onRootEndpointStateChanged);
 }
 
 MakeLeaps::ConnectionState MakeLeaps::state() const
@@ -184,6 +184,8 @@ MakeLeapsEndpoint* MakeLeaps::root()
 
 void MakeLeaps::reloadAccessToken()
 {
+   oauth_.setClientId(settings_.clientId());
+   oauth_.setClientSecret(settings_.clientSecret());
    oauth_.reloadAccessToken();
 }
 
@@ -290,7 +292,7 @@ bool AllowHeaderIsModifiable(QNetworkReply* reply)
 void MakeLeapsEndpoint::load()
 {
    currentReply_ = api_->loadEndpointUrl(url_);
-   connect(currentReply_, QNetworkReply::finished, this, MakeLeapsEndpoint::onReplyFinished);
+   connect(currentReply_, &QNetworkReply::finished, this, &MakeLeapsEndpoint::onReplyFinished);
    currentReply_->setParent(this);
 
    setState(STATE_LOADING);
