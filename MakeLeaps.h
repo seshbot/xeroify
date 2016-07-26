@@ -177,7 +177,7 @@ public:
    {
       for (auto key: object_.keys())
       {
-         properties_.append( new MakeLeapsResourceProperty( *api_, key, object_[key], this ) );
+         properties_.append( new MakeLeapsResourceProperty( *api_, key, object_.value(key), this ) );
       }
    }
 
@@ -200,7 +200,6 @@ inline QList<QObject*> JsonValue::arrayValue()
    QList<QObject*> result;
    for ( auto value: value_.toArray() )
    {
-      qDebug() << "value " << value.type();
       result.append( new JsonValue(value, this) );
    }
    return result;
@@ -215,6 +214,7 @@ class MakeLeapsEndpoint : public QObject
    Q_PROPERTY(QString url READ urlString CONSTANT)
    Q_PROPERTY(MakeLeapsResource* resource READ resource NOTIFY resourceChanged)
    Q_PROPERTY(QList<QObject*> resources READ resources NOTIFY resourcesChanged)
+   Q_PROPERTY(QString lastErrorMessage READ lastErrorMessage NOTIFY lastErrorMessageChanged)
 
 public:
    enum State
@@ -262,11 +262,14 @@ public:
    void setResource(MakeLeapsResource* resource) { resource_ = resource; setState(STATE_LOADED); emit resourceChanged(); }
    void setResources(QList<QObject*> resources) { resources_ = resources; setState(STATE_LOADED); emit resourcesChanged(); }
 
+   QString lastErrorMessage() const { return lastError_; }
+
 signals:
    void stateChanged();
    void isModifyableChanged();
    void resourceChanged();
    void resourcesChanged();
+   void lastErrorMessageChanged();
 
 public slots:
    void load();
@@ -286,7 +289,7 @@ private:
    MakeLeapsResource* resource_;
    QList<QObject*> resources_;
    QNetworkReply* currentReply_;
-
+   QString lastError_;
 };
 
 

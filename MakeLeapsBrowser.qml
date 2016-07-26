@@ -13,11 +13,51 @@ Page {
     property bool loading : endpoint && endpoint.state == MakeLeapsEndpoint.STATE_LOADING
     property bool loaded : endpoint && endpoint.state == MakeLeapsEndpoint.STATE_LOADED
     property bool singleEntity : endpoint && endpoint.resource
-    header: Label {
-        padding: 6
-        horizontalAlignment: Text.AlignHCenter
-        color: 'gray'
-        text: invalid ? '' : error ? qsTr('error') : loading ? qsTr('loading') : endpoint.url
+
+    property int navbarWidth : root.width / 4
+
+    property bool backEnabled: false
+    property bool forwardEnabled: false
+
+    signal endpointSelected(MakeLeapsEndpoint e)
+    signal backClicked()
+    signal forwardClicked()
+
+    header: Pane {
+        width: parent.width
+        RowLayout {
+            width: parent.width
+            Button {
+                text: "<"
+                enabled: root.backEnabled
+                background: Rectangle {
+                    implicitWidth: headerLabel.height
+                    implicitHeight: headerLabel.height
+                }
+                onClicked: {
+                    backClicked()
+                }
+            }
+            Button {
+                text: ">"
+                enabled: root.forwardEnabled
+                background: Rectangle {
+                    implicitWidth: headerLabel.height
+                    implicitHeight: headerLabel.height
+                }
+                onClicked: {
+                    forwardClicked()
+                }
+            }
+            Label {
+                id: headerLabel
+                Layout.fillWidth: true
+                padding: 6
+                horizontalAlignment: Text.AlignHCenter
+                color: 'gray'
+                text: invalid ? '' : error ? qsTr('Error: ') + endpoint.lastErrorMessage: loading ? qsTr('loading') : endpoint.url
+            }
+        }
     }
     Component {
         id: loadingPage
@@ -36,7 +76,7 @@ Page {
             //
             ListView {
                 id: childList
-                Layout.minimumWidth: root.width / 4
+                Layout.minimumWidth: navbarWidth
                 Layout.fillHeight: true
                 currentIndex: -1
                 highlightFollowsCurrentItem: true
@@ -48,7 +88,7 @@ Page {
                     onClicked: {
                         if (modelData.type === MakeLeapsResourceProperty.TYPE_ENDPOINT)
                         {
-                            root.endpoint = modelData
+                            root.endpointSelected(modelData.endpoint)
                         }
                         else
                         {
@@ -82,6 +122,12 @@ Page {
                             Pane {
                                 anchors.fill: resourceDetails
                                 Component {
+                                    id: emptyInfo
+                                    Text {
+                                        text: 'No Endpoint'
+                                    }
+                                }
+                                Component {
                                     id: todoPropertyInfo
                                     Text {
                                         text: 'todo'
@@ -90,7 +136,7 @@ Page {
                                 Component {
                                     id: noPropertyInfo
                                     Text {
-                                        text: 'select something'
+                                        text: ''
                                     }
                                 }
                                 Component {
@@ -107,9 +153,13 @@ Page {
                                 Component {
                                     id: resourceArrayPropertyInfo
                                     ListView {
+                                        anchors.fill: parent
                                         model: selectedResourceProperty.resources
                                         delegate: ItemDelegate {
                                             text: modelData.name
+                                            onClicked: {
+                                                endpointSelected(modelData.properties[1].endpoint)
+                                            }
                                         }
                                     }
                                 }
@@ -165,17 +215,95 @@ Page {
     }
     Component {
         id: resourceArray
-        Text {
-            text: 'resources: ' + endpoint.resources.length
+        RowLayout {
+            id: resourceArrayPage
+            property var selectedResource
+            ListView {
+                Layout.minimumWidth: root.width / 4
+                Layout.fillHeight: true
+                model: endpoint.resources
+                delegate: ItemDelegate {
+                    text: modelData.name
+                    width: parent.width
+                    highlighted: resourceArrayPage.selectedResource === modelData
+                    onClicked: {
+                        resourceArrayPage.selectedResource = modelData
+                    }
+                }
+                ScrollIndicator.vertical: ScrollIndicator { }
+            }
+            Loader {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Component {
+                    id: resourceView
+                    Page {
+                        anchors.fill: parent
+                        ListView {
+                            anchors.fill: parent
+                            model: resourceArrayPage.selectedResource.properties
+                            delegate: ItemDelegate {
+                                width: parent.width
+                                Row {
+                                    width: parent.width
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    Label {
+                                        color: Material.color(Material.Grey)
+                                        width: 100
+                                        text: modelData.name
+                                    }
+                                    Label {
+                                        text: {
+                                            switch (modelData.type) {
+                                            case MakeLeapsResourceProperty.TYPE_VALUE: return modelData.value;
+                                            case MakeLeapsResourceProperty.TYPE_VALUE_ARRAY: return modelData.properties.length + ' values';
+                                            default: return modelData.typeString;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Component {
+                    id: loadingResourceView
+                    Page {
+                        anchors.centerIn: parent
+                        Label {
+                            text: ''
+                        }
+                    }
+                }
+                sourceComponent: resourceArrayPage.selectedResource ? resourceView : loadingResourceView
+            }
         }
     }
+    Component {
+        id: errorPage
+        Page {
+            anchors.fill: parent
+            Button {
+                anchors.centerIn: parent
+                text: 'Reload'
+                onClicked: {
+                    root.endpoint.load()
+                }
+            }
+        }
+    }
+
     Loader {
+        id: resourceLoader
         anchors.fill: parent
-        sourceComponent: !root.loaded ? loadingPage
-                                      : root.singleEntity ? singleResource
-                                                          : resourceArray
+        sourceComponent: {
+            if (root.error) return errorPage;
+            if (!root.loaded) return loadingPage;
+            if (root.singleEntity) return singleResource;
+            return resourceArray;
+        }
     }
-    footer: Text {
-        text: 'footer'
-    }
+//    footer: Text {
+//        text: 'footer'
+//    }
 }

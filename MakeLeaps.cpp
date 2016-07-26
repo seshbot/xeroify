@@ -88,14 +88,12 @@ MakeLeapsResourceProperty::MakeLeapsResourceProperty(MakeLeaps& api, const QStri
    // "https://..." is an endpoint
    if (value_.type() == QJsonValue::String && value_.toString().startsWith(MAKELEAPS_API_BASE))
    {
-      qDebug() << name << ": endpoint";
       type_ = TYPE_ENDPOINT;
       endpoint_ = new MakeLeapsEndpoint(*api_, value_.toString(), false, this);
    }
    // [ { }, ... ]
    else if (value_.type() == QJsonValue::Array)
    {
-      qDebug() << name << ": array";
       auto array = value_.toArray();
       auto arrayOfResources = true;
       for (auto v: array)
@@ -136,17 +134,25 @@ MakeLeapsResourceProperty::MakeLeapsResourceProperty(MakeLeaps& api, const QStri
    // { ... }
    else if (value_.type() == QJsonValue::Object)
    {
-      qDebug() << name << ": object";
-
       type_ = TYPE_RESOURCE;
       resource_ = new MakeLeapsResource(*api_, value_.toObject(), this);
    }
    // ""
    else
    {
-      qDebug() << name << ": value";
       type_ = TYPE_VALUE;
-      stringValue_ = QJsonDocument::fromVariant(value_.toVariant()).toJson(QJsonDocument::Compact);
+   }
+
+   switch (value_.type())
+   {
+   case QJsonValue::Null: stringValue_ = "<null>"; break;
+   case QJsonValue::Bool: stringValue_ = value_.toBool() ? "true" : "false"; break;
+   case QJsonValue::Double: stringValue_ = QString::number(value_.toDouble()); break;
+   case QJsonValue::String: stringValue_ = value_.toString(); break;
+   case QJsonValue::Array: stringValue_ = "<array>"; break;
+   case QJsonValue::Object: stringValue_ = "<object>"; break;
+   case QJsonValue::Undefined: stringValue_ = "<undefined>"; break;
+   default: stringValue_ = "???";
    }
 }
 
@@ -313,10 +319,14 @@ void MakeLeapsEndpoint::onReplyFinished()
       break;
    case QNetworkReply::AuthenticationRequiredError:
       qDebug() << "Authentication error - needs reauth";
+      lastError_ = "Authentication failed";
+      emit lastErrorMessageChanged();
       setState( STATE_NEEDS_AUTHENTICATION );
       return;
    default:
       qDebug() << "Network error: " << currentReply_->errorString();
+      lastError_ = currentReply_->errorString();
+      emit lastErrorMessageChanged();
       setState( STATE_ERROR );
       return;
    }
