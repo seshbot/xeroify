@@ -66,103 +66,76 @@ private:
    QJsonValue value_;
 };
 
-
-// Endoint 1
-//
-//{
-//    "partners": [
-//        {
-//            "url": "https://app.makeleaps.com/api/partner/1725857643916378083/",
-//            "name": "Kyoto Brewing Co., Ltd"
-//        }
-//    ],
-//    "currencies": "https://app.makeleaps.com/api/currency/"
-//}
-
-// Endpoint 2
-// {
-//   "url": "https://app.makeleaps.com/api/partner/1725857643916378083/",
-//   "name": "Kyoto Brewing Co., Ltd",
-//   "clients": "https://app.makeleaps.com/api/partner/1725857643916378083/client/",
-//   "contacts": "https://app.makeleaps.com/api/partner/1725857643916378083/contact/",
-//   "documents": "https://app.makeleaps.com/api/partner/1725857643916378083/document/",
-//   "tags": "https://app.makeleaps.com/api/partner/1725857643916378083/tag/"
-// }
-
-
-//
-// endpoint could reference:
-// - resource (client/12345)
-// - collection (client/)
-// -
-
 class MakeLeaps;
-class MakeLeapsResource;
+class ApiObject;
 class MakeLeapsEndpoint;
 
-class MakeLeapsResourceProperty : public QObject
+class ApiProperty : public QObject
 {
    Q_OBJECT
+   Q_PROPERTY(bool isEndpoint READ isEndpoint CONSTANT)
    Q_PROPERTY(QString name READ name CONSTANT)
    Q_PROPERTY(Type type READ type CONSTANT)
    Q_PROPERTY(QString typeString READ typeString CONSTANT)
-   Q_PROPERTY(MakeLeapsResource* resource READ resource CONSTANT)
-   Q_PROPERTY(QList<QObject*> resources READ resources CONSTANT)
-   Q_PROPERTY(QList<QObject*> properties READ properties CONSTANT)
-   Q_PROPERTY(QString value READ value CONSTANT)
-   Q_PROPERTY(MakeLeapsEndpoint* endpoint READ endpoint CONSTANT)
+   Q_PROPERTY(ApiObject* asObject READ asObject CONSTANT)
+   Q_PROPERTY(QString asScalar READ asScalar CONSTANT)
+   Q_PROPERTY(QList<QObject*> asArray READ asArray CONSTANT)
+   Q_PROPERTY(MakeLeapsEndpoint* asEndpoint READ asEndpoint CONSTANT)
 
 public:
    enum Type
    {
-      TYPE_VALUE,
-      TYPE_VALUE_ARRAY,
+      TYPE_NULL,
+      TYPE_SCALAR,
+      TYPE_OBJECT,
       TYPE_RESOURCE,
-      TYPE_RESOURCE_ARRAY,
-      TYPE_ENDPOINT,
+      TYPE_ARRAY,
    };
    Q_ENUMS(Type)
 
-   MakeLeapsResourceProperty(MakeLeaps& api, const QString& name, const QJsonValue& value, QObject* parent = 0);
+   ApiProperty(QObject* parent = 0);
+   ApiProperty(MakeLeaps& api, const QString& name, const QJsonValue& value, QObject* parent = 0);
 
+   MakeLeapsEndpoint* asEndpoint();
+
+   bool isEndpoint() const { return isEndpoint_; }
    QString name() const { return name_; }
+
    Type type() const { return type_; }
    QString typeString() const
    {
       switch (type())
       {
-      case TYPE_VALUE: return "VALUE";
-      case TYPE_VALUE_ARRAY: return "VALUE_ARRAY";
+      case TYPE_NULL: return "NULL";
+      case TYPE_SCALAR: return "SCALAR";
+      case TYPE_OBJECT: return "OBJECT";
       case TYPE_RESOURCE: return "RESOURCE";
-      case TYPE_RESOURCE_ARRAY: return "RESOURCE ARRAY";
-      case TYPE_ENDPOINT: return "ENDPOINT";
+      case TYPE_ARRAY: return "ARRAY";
       default: return "UNKNOWN";
       }
    }
-   MakeLeapsResource* resource() { return resource_; }
-   QList<QObject*> resources() { return resources_; }
-   MakeLeapsEndpoint* endpoint() { return endpoint_; }
-   QString value() { return stringValue_; }
-   QList<QObject*> properties() { return properties_; }
+   QString asScalar() { return stringValue_; }
+   ApiObject* asObject() { return object_; }
+   QList<QObject*> asArray() { return objects_; }
 
 private:
    MakeLeaps* api_;
-   QString name_;
    Type type_;
-   MakeLeapsResource* resource_;
-   QList<QObject*> resources_;
-   MakeLeapsEndpoint* endpoint_;
+   ApiObject* object_;
+   QList<QObject*> objects_;
 
    QJsonValue value_;
    QString stringValue_;
 
-   QList<QObject*> properties_;
+   QString name_;
+   bool isEndpoint_;
 };
 
 // resource has child nodes that are either URLs or arrays?
-class MakeLeapsResource : public QObject
+class ApiObject : public QObject
 {
    Q_OBJECT
+   Q_PROPERTY(bool isResource READ isResource CONSTANT)
    Q_PROPERTY(QString name READ name CONSTANT)
    Q_PROPERTY(QString url READ url CONSTANT)
    Q_PROPERTY(QString jsonString READ jsonString CONSTANT)
@@ -170,28 +143,25 @@ class MakeLeapsResource : public QObject
    Q_PROPERTY(QList<QObject*> properties READ properties CONSTANT)
 
 public:
-   explicit MakeLeapsResource(MakeLeaps& api, const QJsonObject& object, QObject* parent = 0)
-      : QObject(parent)
-      , api_(&api)
-      , object_(object)
-   {
-      for (auto key: object_.keys())
-      {
-         properties_.append( new MakeLeapsResourceProperty( *api_, key, object_.value(key), this ) );
-      }
-   }
+   explicit ApiObject(MakeLeaps& api, const QJsonObject& object, QObject* parent = 0);
 
-   QString name() const { return object_["name"].toString(); }
+   bool isResource() const { return isResource_; }
+   QString name() const
+   {
+      if (object_.contains("name")) return object_["name"].toString();
+      if (object_.contains("display_name")) return object_["display_name"].toString();
+      return "-";
+   }
    QString url() const { return object_["url"].toString(); }
    QString jsonString() const { return QJsonDocument(object_).toJson(QJsonDocument::Indented); }
    QStringList keys() const { return object_.keys(); }
 
    QList<QObject*> properties() { return properties_; }
-   JsonValue* operator[](const QString& key) { return new JsonValue( object_[key], this ); }
 
 private:
    MakeLeaps* api_;
    QJsonObject object_;
+   bool isResource_;
    QList<QObject*> properties_;
 };
 
@@ -213,7 +183,7 @@ class MakeLeapsEndpoint : public QObject
    Q_PROPERTY(State state READ state NOTIFY stateChanged)
    Q_PROPERTY(bool isModifyable READ isModifyable NOTIFY isModifyableChanged)
    Q_PROPERTY(QString url READ urlString CONSTANT)
-   Q_PROPERTY(MakeLeapsResourceProperty* rootProperty READ rootProperty NOTIFY rootPropertyChanged)
+   Q_PROPERTY(ApiProperty* rootProperty READ rootProperty NOTIFY rootPropertyChanged)
    Q_PROPERTY(QString lastErrorMessage READ lastErrorMessage NOTIFY lastErrorMessageChanged)
 
 public:
@@ -257,9 +227,9 @@ public:
 
    State state() const { return state_; }
 
-   MakeLeapsResourceProperty* rootProperty() const { return rootProperty_; }
+   ApiProperty* rootProperty() const { return rootProperty_; }
 
-   void setRootProperty(MakeLeapsResourceProperty* property) { rootProperty_ = property; setState(STATE_LOADED); emit rootPropertyChanged(); }
+   void setRootProperty(ApiProperty* property) { rootProperty_ = property; setState(STATE_LOADED); emit rootPropertyChanged(); }
 
    QString lastErrorMessage() const { return lastError_; }
 
@@ -283,7 +253,7 @@ private:
    State state_;
    QUrl url_;
    bool isModifyable_;
-   MakeLeapsResourceProperty* rootProperty_;
+   ApiProperty* rootProperty_;
    QNetworkReply* currentReply_;
    QString lastError_;
 };
@@ -294,7 +264,7 @@ class MakeLeaps : public QObject
    Q_OBJECT
    Q_PROPERTY(OAuth2Settings* settings READ settings)
    Q_PROPERTY(ConnectionState state READ state NOTIFY stateChanged)
-   Q_PROPERTY(MakeLeapsEndpoint* root READ root NOTIFY rootChanged)
+   Q_PROPERTY(MakeLeapsEndpoint* apiRoot READ apiRoot NOTIFY rootChanged)
 
 public:
    enum ConnectionState
@@ -311,7 +281,7 @@ public:
 
    ConnectionState state() const;
    OAuth2Settings* settings();
-   MakeLeapsEndpoint* root();
+   MakeLeapsEndpoint* apiRoot();
 
    Q_INVOKABLE MakeLeapsEndpoint* createEndpoint(QString url) {
       return new MakeLeapsEndpoint( *this, QUrl(url), false, this );

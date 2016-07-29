@@ -8,67 +8,6 @@
 #include <QJsonArray>
 #include <QAuthenticator>
 
-// Property:
-// - name
-// - type: resource, resource_array, endpoint
-
-// Resource:
-//  - name
-//  - url
-//  - properties
-
-/// https://app.makeleaps.com/api/
-//{
-//  "partners": [
-//      {
-//          "url": "https://app.makeleaps.com/api/partner/1725857643916378083/",
-//          "name": "Kyoto Brewing Co., Ltd"
-//      }
-//  ],
-//  "currencies": "https://app.makeleaps.com/api/currency/"
-//}
-
-/// https://app.makeleaps.com/api/partner/1725857643916378083/
-//{
-//   "url": "https://app.makeleaps.com/api/partner/1725857643916378083/",
-//   "name": "Kyoto Brewing Co., Ltd",
-//   "clients": "https://app.makeleaps.com/api/partner/1725857643916378083/client/",
-//   "contacts": "https://app.makeleaps.com/api/partner/1725857643916378083/contact/",
-//   "documents": "https://app.makeleaps.com/api/partner/1725857643916378083/document/",
-//   "tags": "https://app.makeleaps.com/api/partner/1725857643916378083/tag/"
-//}
-
-/// https://app.makeleaps.com/api/partner/1725857643916378083/contact/
-//[
-//   {
-//      "url": "https://app.makeleaps.com/api/partner/1725857643916378083/contact/1725857644256983755/",
-//      "mid": "1725857644256983755",
-//      "owner": "https://app.makeleaps.com/api/partner/1725857643916378083/",
-//      "owner_type": "partner",
-//      "contact_type": "organization",
-//      "name": "Your Company",
-//      "display_name": "Your Company",
-//      "title": "",
-//      "is_default": true,
-//      "email": null,
-//      "addresses": [
-//          {
-//              "format": "jp_default",
-//              "country_name": "JP",
-//              "street_address": "西九条高畠町25-1",
-//              "extended_address": "",
-//              "locality": "京都市南区",
-//              "region": "kyoto",
-//              "postal_code": "601-8446",
-//              "display": "601-8446京都府京都市南区西九条高畠町25-1"
-//          }
-//      ],
-//      "default_address": {
-//          "formatted_html": "\n\n\n\n\n<div class=\"adr jp-default\">\n〒<span class=\"postal-code\">601-8446</span><br><span class=\"region\">京都府</span><span class=\"locality\">京都市南区</span><span class=\"street-address\">西九条高畠町25-1</span>\n</div>\n\n\n\n\n"
-//      }
-//   }
-//]
-
 namespace
 {
 
@@ -87,6 +26,21 @@ bool IsResource( const QJsonValue& v ) {
    return true;
 }
 
+QString StringValue(const QJsonValue& value )
+{
+   switch (value.type())
+   {
+   case QJsonValue::Null: return "<null>";
+   case QJsonValue::Bool: return value.toBool() ? "true" : "false";
+   case QJsonValue::Double: return QString::number(value.toDouble());
+   case QJsonValue::String: return value.toString();
+   case QJsonValue::Array: return "<array>";
+   case QJsonValue::Object: return "<object>";
+   case QJsonValue::Undefined: return "<undefined>";
+   default: return "???";
+   }
+}
+
 }
 
 
@@ -94,75 +48,68 @@ bool IsResource( const QJsonValue& v ) {
 // MakeLeapsResourceProperty
 //
 
-MakeLeapsResourceProperty::MakeLeapsResourceProperty(MakeLeaps& api, const QString& name, const QJsonValue& value, QObject* parent)
-   : QObject(parent), api_(&api), name_(name), resource_(nullptr), endpoint_(nullptr), value_(value)
+ApiProperty::ApiProperty(QObject* parent)
+   : QObject(parent), api_(nullptr), type_ { TYPE_NULL }, object_(nullptr), isEndpoint_(false)
+{
+
+}
+
+ApiProperty::ApiProperty(MakeLeaps& api, const QString& name, const QJsonValue& value, QObject* parent)
+   : QObject(parent), api_(&api), type_ { TYPE_NULL }, object_(nullptr), value_(value), name_(name), isEndpoint_(false)
 {
    // "https://api.makeleaps.com/api/..." is an endpoint
    if (value_.type() == QJsonValue::String && value_.toString().startsWith(MAKELEAPS_API_BASE))
    {
-      type_ = TYPE_ENDPOINT;
-      endpoint_ = new MakeLeapsEndpoint(*api_, value_.toString(), false, this);
+      isEndpoint_ = true;
    }
+
    // [ { }, ... ]
-   else if (value_.type() == QJsonValue::Array)
+   if (value_.type() == QJsonValue::Array)
    {
+      type_ = TYPE_ARRAY;
+
       auto array = value_.toArray();
-      auto arrayOfResources = true;
       for (auto v: array)
       {
-         if (!IsResource(v))
-         {
-            arrayOfResources = false;
-            break;
-         }
-      }
-
-      // [ { id: '', url: '', ... }, ... ]
-      if ( arrayOfResources )
-      {
-         type_ = TYPE_RESOURCE_ARRAY;
-         for (auto v: array)
-         {
-            resources_.append(new MakeLeapsResource(*api_, v.toObject(), this));
-         }
-      }
-      // [ { ... }, ... ] or [ "", ... ]
-      else
-      {
-         type_ = TYPE_VALUE_ARRAY;
-         for (auto v: array)
-         {
-            QString name;
-            if (v.isObject()) {
-               auto o = v.toObject();
-               if (o.contains("name")) name = o["name"].toString();
-            }
-            properties_.append(new MakeLeapsResourceProperty(*api_, name, v, this));
-         }
+         objects_.append(new ApiProperty(*api_, "", v, this));
       }
    }
    // { ... }
-   else if (IsResource(value_))
+   else if (value_.isObject())
    {
-      type_ = TYPE_RESOURCE;
-      resource_ = new MakeLeapsResource(*api_, value_.toObject(), this);
+      type_ = IsResource(value_) ? TYPE_RESOURCE : TYPE_OBJECT;
+      auto object = value_.toObject();
+      object_ = new ApiObject(*api_, object, this);
+      if (name_.isEmpty() && object.contains("name")) name_ = object["name"].toString();
+      if (name_.isEmpty() && object.contains("display_name")) name_ = object["display_name"].toString();
    }
    // ""
+   else if (value_.isNull() || value_.isUndefined())
+   {
+      type_ = TYPE_NULL;
+   }
    else
    {
-      type_ = TYPE_VALUE;
+      type_ = TYPE_SCALAR;
    }
 
-   switch (value_.type())
+   stringValue_ = StringValue( value_ );
+}
+
+MakeLeapsEndpoint* ApiProperty::asEndpoint()
+{
+   return new MakeLeapsEndpoint(*api_, value_.toString(), false, this);
+}
+
+ApiObject::ApiObject(MakeLeaps& api, const QJsonObject& object, QObject* parent)
+   : QObject(parent)
+   , api_(&api)
+   , object_(object)
+   , isResource_(IsResource(object))
+{
+   for (auto key: object_.keys())
    {
-   case QJsonValue::Null: stringValue_ = "<null>"; break;
-   case QJsonValue::Bool: stringValue_ = value_.toBool() ? "true" : "false"; break;
-   case QJsonValue::Double: stringValue_ = QString::number(value_.toDouble()); break;
-   case QJsonValue::String: stringValue_ = value_.toString(); break;
-   case QJsonValue::Array: stringValue_ = "<array>"; break;
-   case QJsonValue::Object: stringValue_ = "<object>"; break;
-   case QJsonValue::Undefined: stringValue_ = "<undefined>"; break;
-   default: stringValue_ = "???";
+      properties_.append( new ApiProperty( *api_, key, object_.value(key), this ) );
    }
 }
 
@@ -193,7 +140,7 @@ OAuth2Settings* MakeLeaps::settings()
     return &settings_;
 }
 
-MakeLeapsEndpoint* MakeLeaps::root()
+MakeLeapsEndpoint* MakeLeaps::apiRoot()
 {
    return &rootEndpoint_;
 }
@@ -355,20 +302,5 @@ void MakeLeapsEndpoint::onReplyFinished()
    }
 
    auto entityWrapper = json.object();
-   setRootProperty( new MakeLeapsResourceProperty(*api_, "response", entityWrapper["response"], this) );
-//   if ( entityWrapper["response"].isArray() )
-//   {
-//      QList<QObject*> resources;
-//      for (auto resource: entityWrapper["response"].toArray())
-//      {
-//         resources.append(new MakeLeapsResource(*api_, resource.toObject(), this));
-//      }
-//      setResources(resources);
-//   }
-//   else
-//   {
-//      setResource(new MakeLeapsResource(*api_, entityWrapper["response"].toObject(), this));
-//   }
-
-//   setState( STATE_LOADED );
+   setRootProperty( new ApiProperty(*api_, "response", entityWrapper["response"], this) );
 }

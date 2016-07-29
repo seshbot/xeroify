@@ -8,6 +8,46 @@ import BusyBot 1.0
 Page {
     id: root
     property MakeLeapsEndpoint endpoint
+    property ApiProperty rootProperty: endpoint.rootProperty
+    property ApiProperty selectedProperty: endpoint.rootProperty
+
+    Connections {
+        target: endpoint
+        onRootPropertyChanged: {
+            if (endpoint.rootProperty) {
+                root.rootProperty = endpoint.rootProperty
+                switch (root.rootProperty.type) {
+                case ApiProperty.TYPE_OBJECT:
+                case ApiProperty.TYPE_RESOURCE:
+                    //var obj = endpoint.rootProperty.asObject
+                    root.selectedProperty = endpoint.rootProperty // obj.properties.length > 0 ? obj.properties[0] : null
+                    break
+                case ApiProperty.TYPE_ARRAY:
+                    var array = endpoint.rootProperty.asArray
+                    root.selectedProperty = array.length > 0 ? array[0] : null
+                    break
+                case ApiProperty.TYPE_NULL:
+                case ApiProperty.TYPE_SCALAR:
+                default:
+                    root.selectedProperty = endpoint.rootProperty
+                }
+
+            }
+        }
+    }
+
+    onEndpointChanged: {
+        console.log(' *** endpoint changed: ', endpoint ? endpoint.url : 'null', endpoint.rootProperty ? 'set' : 'not set')
+    }
+
+    onRootPropertyChanged: {
+        console.log(' *** root property changed: ', root.rootProperty ? ( 'name=' + root.rootProperty.name ) : 'null')
+    }
+
+    onSelectedPropertyChanged: {
+        console.log(' *** current property changed: ', root.selectedProperty ? ( 'name=' + root.selectedProperty.name ) : 'null')
+    }
+
     property bool invalid : !endpoint || endpoint.state == MakeLeapsEndpoint.STATE_INVALID
     property bool error : endpoint && endpoint.state == MakeLeapsEndpoint.STATE_ERROR
     property bool loading : endpoint && endpoint.state == MakeLeapsEndpoint.STATE_LOADING
@@ -15,13 +55,49 @@ Page {
 
     property int navbarWidth : root.width / 4
 
-    property bool backEnabled: false
-    property bool forwardEnabled: false
+    property var history: []
+    property var future: []
+    property bool backEnabled: history.length > 0
+    property bool forwardEnabled: future.length > 0
 
-    signal endpointSelected(MakeLeapsEndpoint e)
-    signal endpointUrlSelected(string url)
-    signal backClicked()
-    signal forwardClicked()
+    function pushHistory(h) {
+        history.push(h)
+        future = []
+        updateNavButtons()
+    }
+
+    function pushEndpoint(e) {
+        pushHistory({ endpoint: root.endpoint, property: root.rootProperty })
+        endpoint = e
+        endpoint.load()
+    }
+    function pushProperty(p) {
+        pushHistory({ endpoint: root.endpoint, property: root.rootProperty })
+        root.rootProperty = p
+    }
+    function forward() {
+        if (future.length > 0) {
+            history.push({ endpoint: root.endpoint, property: root.rootProperty })
+            var h = future.pop()
+            root.endpoint = h.endpoint || root.endpoint
+            root.rootProperty = h.property || root.rootProperty
+        }
+        updateNavButtons()
+    }
+    function back() {
+        if (history.length > 0) {
+            future.push({ endpoint: root.endpoint, property: root.rootProperty })
+            var h = history.pop()
+            root.endpoint = h.endpoint || root.endpoint
+            root.rootProperty = h.property || root.rootProperty
+        }
+        updateNavButtons()
+    }
+    function updateNavButtons() {
+        backEnabled = history.length > 0
+        forwardEnabled = future.length > 0
+    }
+
 
     Popup {
         id: changeEndpointPopup
@@ -48,8 +124,7 @@ Page {
                 }
             }
         }
-    }
-
+    } // popup
     header: Pane {
         width: parent.width
         RowLayout {
@@ -62,7 +137,7 @@ Page {
                     implicitHeight: headerLabel.height
                 }
                 onClicked: {
-                    backClicked()
+                    back()
                 }
             }
             Button {
@@ -73,7 +148,7 @@ Page {
                     implicitHeight: headerLabel.height
                 }
                 onClicked: {
-                    forwardClicked()
+                    forward()
                 }
             }
             Label {
@@ -91,282 +166,67 @@ Page {
                 }
                 onLinkActivated: {
                     changeEndpointPopup.open()
-                    // endpointUrlSelected(link)
                 }
             }
             Label {
                 text: {
-                    if (!endpoint.rootProperty) return ''
+                    if (!root.selectedProperty) return ''
                     var countString = ''
-                    switch (endpoint.rootProperty.type) {
-                    case MakeLeapsResourceProperty.TYPE_RESOURCE_ARRAY: countString = '[' + endpoint.rootProperty.resources.length + ']'; break;
-                    case MakeLeapsResourceProperty.TYPE_VALUE_ARRAY: countString = '[' + endpoint.rootProperty.properties.length + ']'; break;
+                    switch (root.selectedProperty.type) {
+                    case ApiProperty.TYPE_ARRAY: countString = '[' + root.selectedProperty.asArray.length + ']'; break;
                     }
-                    return endpoint.rootProperty.typeString + countString
+                    return root.selectedProperty.typeString + countString
                 }
             }
         }
-    }
-    Component {
-        id: loadingPage
-        Label {
-            text: 'loading'
-        }
-    }
-    Component {
-        id: todoPage
-        Label {
-            text: 'todo: ' + endpoint.rootProperty.typeString
-        }
-    }
-    Component {
-        id: singleResource
-        RowLayout {
-            id: singleResourcePage
-            property var selectedResourceProperty
-            anchors.fill: parent
-            //
-            // endpoint nav bar
-            //
-            ListView {
-                id: childList
-                Layout.minimumWidth: navbarWidth
-                Layout.fillHeight: true
-                currentIndex: -1
-                highlightFollowsCurrentItem: true
-                model: endpoint.rootProperty.resource.properties
-                delegate: ItemDelegate {
-                    text: {
-                        var result = modelData.name
-                        if (modelData.type === MakeLeapsResourceProperty.TYPE_ENDPOINT) {
-                            result = '<a href="' + modelData.url + '">' + result + '</a>'
-                        }
-                        return result
-                    }
-                    width: parent.width
-                    highlighted: singleResourcePage.selectedResourceProperty === modelData
-                    onClicked: {
-                        if (modelData.type === MakeLeapsResourceProperty.TYPE_ENDPOINT)
-                        {
-                            root.endpointSelected(modelData.endpoint)
-                        }
-                        else if (modelData.type === MakeLeapsResourceProperty.TYPE_RESOURCE_ARRAY)
-                        {
-                            childList.model = modelData.resources
-                        }
-                        else
-                        {
-                            singleResourcePage.selectedResourceProperty = modelData
-                        }
-                    }
-                }
-                ScrollIndicator.vertical: ScrollIndicator { }
-            }
-            Page {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Loader {
-                    Component {
-                        id: emptyInfo
-                        Text {
-                            text: 'No Endpoint'
-                        }
-                    }
-                    Component {
-                        id: todoPropertyInfo
-                        Text {
-                            text: 'todo: ' + selectedResourceProperty.typeString
-                        }
-                    }
-                    Component {
-                        id: noPropertyInfo
-                        Text {
-                            text: ''
-                        }
-                    }
-                    Component {
-                        id: endpointPropertyInfo
-                        Pane {
-                            property var endpoint: selectedResourceProperty.endpoint
-                            anchors.centerIn: parent
-                            Label {
-                                anchors.centerIn: parent
-                                text: endpoint ? endpoint.url : '-'
-                            }
-                        }
-                    }
-                    Component {
-                        id: resourcePropertyInfo
-                        Page {
-                            anchors.fill: parent
-                            ListView {
-                                anchors.fill: parent
-                                model: selectedResourceProperty.properties
-                                delegate: ItemDelegate {
-                                    width: parent.width
-                                    Row {
-                                        width: parent.width
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        Label {
-                                            color: Material.color(Material.Grey)
-                                            width: 100
-                                            text: modelData.name
-                                        }
-                                        Label {
-                                            text: {
-                                                switch (modelData.type) {
-                                                case MakeLeapsResourceProperty.TYPE_VALUE: return modelData.value;
-                                                case MakeLeapsResourceProperty.TYPE_VALUE_ARRAY: return modelData.properties.length + ' values';
-                                                default: return modelData.typeString;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    Component {
-                        id: resourceArrayPropertyInfo
-                        ListView {
-                            anchors.fill: parent
-                            model: selectedResourceProperty.resources
-                            delegate: ItemDelegate {
-                                text: modelData.name
-                                onClicked: {
-                                    endpointSelected(modelData.properties[1].endpoint)
-                                }
-                            }
-                        }
-                    }
-                    Component {
-                        id: valueArrayPropertyInfo
-                        ListView {
-                            model: selectedResourceProperty.arrayValue
-                            delegate: ItemDelegate {
-                                text: modelData.json
-                            }
-                        }
-                    }
-                    Component {
-                        id: valuePropertyInfo
-                        Text {
-                            text: selectedResourceProperty.value
-                        }
-                    }
-                    sourceComponent: {
-                        if (!singleResourcePage || !singleResourcePage.selectedResourceProperty)
-                            return noPropertyInfo;
-
-                        switch (singleResourcePage.selectedResourceProperty.type)
-                        {
-                        case MakeLeapsResourceProperty.TYPE_ENDPOINT: return endpointPropertyInfo;
-                        case MakeLeapsResourceProperty.TYPE_VALUE: return valuePropertyInfo;
-                        case MakeLeapsResourceProperty.TYPE_VALUE_ARRAY: return valueArrayPropertyInfo;
-                        case MakeLeapsResourceProperty.TYPE_RESOURCE: return resourcePropertyInfo;
-                        case MakeLeapsResourceProperty.TYPE_RESOURCE_ARRAY: return resourceArrayPropertyInfo;
-                        default: return todoPropertyInfo;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    Component {
-        id: resourceArray
-        RowLayout {
-            id: resourceArrayPage
-            property var selectedResource
-            ListView {
-                Layout.minimumWidth: root.width / 4
-                Layout.fillHeight: true
-                model: endpoint.rootProperty.type === MakeLeapsResourceProperty.TYPE_RESOURCE_ARRAY ? endpoint.rootProperty.resources : endpoint.rootProperty.properties
-                delegate: ItemDelegate {
-                    text: modelData.name
-                    width: parent.width
-                    highlighted: resourceArrayPage.selectedResource === modelData
-                    onClicked: {
-                        resourceArrayPage.selectedResource = modelData.resource
-                    }
-                }
-                ScrollIndicator.vertical: ScrollIndicator { }
-            }
-            Loader {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Component {
-                    id: resourceDetailsPanel
-                    Page {
-                        anchors.fill: parent
-                        ListView {
-                            anchors.fill: parent
-                            model: resourceArrayPage.selectedResource.properties
-                            delegate: ItemDelegate {
-                                width: parent.width
-                                Row {
-                                    width: parent.width
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    Label {
-                                        color: Material.color(Material.Grey)
-                                        width: 100
-                                        text: modelData.name
-                                    }
-                                    Label {
-                                        text: {
-                                            switch (modelData.type) {
-                                            case MakeLeapsResourceProperty.TYPE_VALUE: return modelData.value;
-                                            case MakeLeapsResourceProperty.TYPE_VALUE_ARRAY: return modelData.properties.length + ' values';
-                                            default: return modelData.typeString;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                Component {
-                    id: loadingPanel
-                    Page {
-                        anchors.centerIn: parent
-                        Label {
-                            text: ''
-                        }
-                    }
-                }
-                sourceComponent: resourceArrayPage.selectedResource ? resourceDetailsPanel : loadingPanel
-            }
-        }
-    }
-    Component {
-        id: errorPage
-        Page {
-            anchors.fill: parent
-            Button {
-                anchors.centerIn: parent
-                text: 'Reload'
-                onClicked: {
-                    root.endpoint.load()
-                }
-            }
-        }
-    }
-
+    } // header
     Loader {
-        id: resourceLoader
         anchors.fill: parent
-        sourceComponent: {
-            if (root.error) return errorPage;
-            if (!root.loaded) return loadingPage;
-            switch (root.endpoint.rootProperty.type) {
-            case MakeLeapsResourceProperty.TYPE_RESOURCE: return singleResource;
-            case MakeLeapsResourceProperty.TYPE_RESOURCE_ARRAY: return resourceArray;
-            case MakeLeapsResourceProperty.TYPE_VALUE_ARRAY: return resourceArray;
-            default: return todoPage
+        Component {
+            id: loadedPage
+            RowLayout {
+                anchors.fill: parent
+                ApiNavBar {
+                    id: navBar
+                    currentProperty: root.rootProperty
+                    selectedProperty: root.selectedProperty
+                    Layout.minimumWidth: navbarWidth
+                    Layout.fillHeight: true
+
+                    onEndpointItemClicked: {
+                        pushEndpoint(endpoint)
+                    }
+                    onArrayItemClicked: {
+                        pushProperty(item)
+                    }
+                    onObjectItemClicked: {
+                        root.selectedProperty = item
+                    }
+                    onResourceItemClicked: {
+                        root.selectedProperty = item
+                    }
+                }
+                ApiPropertyPage {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+
+                    currentProperty: root.selectedProperty
+
+                    onEndpointItemClicked: {
+                        pushEndpoint(endpoint)
+                    }
+                }
             }
-        }
+        } // loadedPage
+        Component {
+            id: loadingPage
+            Item {
+                Label {
+                    anchors.centerIn: parent
+                    text: 'loading page'
+                }
+            }
+        } // loadingPage
+        sourceComponent: endpoint.rootProperty ? loadedPage : loadingPage
     }
-//    footer: Text {
-//        text: 'footer'
-//    }
 }

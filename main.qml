@@ -191,48 +191,10 @@ ApplicationWindow {
             }
         }
         MakeLeapsBrowser {
-            property var history: []
-            property var future: []
-            backEnabled: history.length > 0
-            forwardEnabled: future.length > 0
             Component.onCompleted: {
                 makeLeaps.load()
             }
-            endpoint: makeLeaps.root
-            onEndpointSelected: {
-                console.log('endpoint selected')
-                history.push(endpoint)
-                future = []
-                endpoint = e
-                endpoint.load()
-                updateNavButtons()
-            }
-            onEndpointUrlSelected: {
-                console.log('endpoint selected: ' + url)
-                history.push(endpoint)
-                future = []
-                endpoint = makeLeaps.createEndpoint(url)
-                endpoint.load()
-                updateNavButtons()
-            }
-            onBackClicked: {
-                if (history.length > 0) {
-                    future.push(endpoint)
-                    endpoint = history.pop()
-                }
-                updateNavButtons()
-            }
-            onForwardClicked: {
-                if (future.length > 0) {
-                    history.push(endpoint)
-                    endpoint = future.pop()
-                }
-                updateNavButtons()
-            }
-            function updateNavButtons() {
-                backEnabled = history.length > 0
-                forwardEnabled = future.length > 0
-            }
+            endpoint: makeLeaps.apiRoot
         }
     }
 

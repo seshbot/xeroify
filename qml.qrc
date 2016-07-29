@@ -5,6 +5,7 @@
         <file>XeroApiSettingsPanel.qml</file>
         <file>MakeLeapsApiSettingsPanel.qml</file>
         <file>MakeLeapsBrowser.qml</file>
-        <file>MakeLeapsResourceBrowser.qml</file>
+        <file>ApiNavBar.qml</file>
+        <file>ApiPropertyPage.qml</file>
     </qresource>
 </RCC>
