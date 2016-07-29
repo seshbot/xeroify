@@ -120,6 +120,7 @@ ApplicationWindow {
     SwipeView {
         id: swipeView
         anchors.fill: parent
+        currentIndex: 3
 
         Page {
             id: homePage
@@ -206,11 +207,18 @@ ApplicationWindow {
                 endpoint.load()
                 updateNavButtons()
             }
+            onEndpointUrlSelected: {
+                console.log('endpoint selected: ' + url)
+                history.push(endpoint)
+                future = []
+                endpoint = makeLeaps.createEndpoint(url)
+                endpoint.load()
+                updateNavButtons()
+            }
             onBackClicked: {
                 if (history.length > 0) {
                     future.push(endpoint)
                     endpoint = history.pop()
-                    endpoint.load()
                 }
                 updateNavButtons()
             }
@@ -218,7 +226,6 @@ ApplicationWindow {
                 if (future.length > 0) {
                     history.push(endpoint)
                     endpoint = future.pop()
-                    endpoint.load()
                 }
                 updateNavButtons()
             }

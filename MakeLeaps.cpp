@@ -75,6 +75,18 @@ namespace
 auto MAKELEAPS_OAUTH_TOKEN_ENDPOINT = "https://api.makeleaps.com/user/oauth2/token/";
 auto MAKELEAPS_API_BASE = "https://api.makeleaps.com/api/";
 
+bool IsResource( const QJsonValue& v ) {
+   if (!v.isObject()) return false;
+
+   auto object = v.toObject();
+   if ( !object.contains("name") || !object.contains("url")  || !object.value("url").toString().startsWith(MAKELEAPS_API_BASE) )
+   {
+      return false;
+   }
+
+   return true;
+}
+
 }
 
 
@@ -85,7 +97,7 @@ auto MAKELEAPS_API_BASE = "https://api.makeleaps.com/api/";
 MakeLeapsResourceProperty::MakeLeapsResourceProperty(MakeLeaps& api, const QString& name, const QJsonValue& value, QObject* parent)
    : QObject(parent), api_(&api), name_(name), resource_(nullptr), endpoint_(nullptr), value_(value)
 {
-   // "https://..." is an endpoint
+   // "https://api.makeleaps.com/api/..." is an endpoint
    if (value_.type() == QJsonValue::String && value_.toString().startsWith(MAKELEAPS_API_BASE))
    {
       type_ = TYPE_ENDPOINT;
@@ -98,14 +110,7 @@ MakeLeapsResourceProperty::MakeLeapsResourceProperty(MakeLeaps& api, const QStri
       auto arrayOfResources = true;
       for (auto v: array)
       {
-         if (!v.isObject())
-         {
-            arrayOfResources = false;
-            break;
-         }
-
-         auto object = v.toObject();
-         if ( !object.contains("name") || !object.contains("url") )
+         if (!IsResource(v))
          {
             arrayOfResources = false;
             break;
@@ -127,12 +132,17 @@ MakeLeapsResourceProperty::MakeLeapsResourceProperty(MakeLeaps& api, const QStri
          type_ = TYPE_VALUE_ARRAY;
          for (auto v: array)
          {
-            properties_.append(new MakeLeapsResourceProperty(*api_, "", v, this));
+            QString name;
+            if (v.isObject()) {
+               auto o = v.toObject();
+               if (o.contains("name")) name = o["name"].toString();
+            }
+            properties_.append(new MakeLeapsResourceProperty(*api_, name, v, this));
          }
       }
    }
    // { ... }
-   else if (value_.type() == QJsonValue::Object)
+   else if (IsResource(value_))
    {
       type_ = TYPE_RESOURCE;
       resource_ = new MakeLeapsResource(*api_, value_.toObject(), this);
@@ -345,19 +355,20 @@ void MakeLeapsEndpoint::onReplyFinished()
    }
 
    auto entityWrapper = json.object();
-   if ( entityWrapper["response"].isArray() )
-   {
-      QList<QObject*> resources;
-      for (auto resource: entityWrapper["response"].toArray())
-      {
-         resources.append(new MakeLeapsResource(*api_, resource.toObject(), this));
-      }
-      setResources(resources);
-   }
-   else
-   {
-      setResource(new MakeLeapsResource(*api_, entityWrapper["response"].toObject(), this));
-   }
+   setRootProperty( new MakeLeapsResourceProperty(*api_, "response", entityWrapper["response"], this) );
+//   if ( entityWrapper["response"].isArray() )
+//   {
+//      QList<QObject*> resources;
+//      for (auto resource: entityWrapper["response"].toArray())
+//      {
+//         resources.append(new MakeLeapsResource(*api_, resource.toObject(), this));
+//      }
+//      setResources(resources);
+//   }
+//   else
+//   {
+//      setResource(new MakeLeapsResource(*api_, entityWrapper["response"].toObject(), this));
+//   }
 
-   setState( STATE_LOADED );
+//   setState( STATE_LOADED );
 }

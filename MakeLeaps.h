@@ -209,11 +209,11 @@ inline QList<QObject*> JsonValue::arrayValue()
 class MakeLeapsEndpoint : public QObject
 {
    Q_OBJECT
+   Q_PROPERTY(MakeLeaps* api READ api CONSTANT)
    Q_PROPERTY(State state READ state NOTIFY stateChanged)
    Q_PROPERTY(bool isModifyable READ isModifyable NOTIFY isModifyableChanged)
    Q_PROPERTY(QString url READ urlString CONSTANT)
-   Q_PROPERTY(MakeLeapsResource* resource READ resource NOTIFY resourceChanged)
-   Q_PROPERTY(QList<QObject*> resources READ resources NOTIFY resourcesChanged)
+   Q_PROPERTY(MakeLeapsResourceProperty* rootProperty READ rootProperty NOTIFY rootPropertyChanged)
    Q_PROPERTY(QString lastErrorMessage READ lastErrorMessage NOTIFY lastErrorMessageChanged)
 
 public:
@@ -233,7 +233,7 @@ public:
       , api_(nullptr)
       , state_(STATE_INVALID)
       , isModifyable_(false)
-      , resource_(nullptr)
+      , rootProperty_(nullptr)
       , currentReply_(nullptr)
    { }
 
@@ -243,9 +243,11 @@ public:
       , state_(STATE_LOADING)
       , url_(url)
       , isModifyable_(isModifyable)
-      , resource_(nullptr)
+      , rootProperty_(nullptr)
       , currentReply_(nullptr)
    { }
+
+   MakeLeaps* api() { return api_; }
 
    QUrl url() const { return url_; }
 
@@ -255,20 +257,16 @@ public:
 
    State state() const { return state_; }
 
-   MakeLeapsResource* resource() const { return resource_; }
+   MakeLeapsResourceProperty* rootProperty() const { return rootProperty_; }
 
-   QList<QObject*> resources() const { return resources_; }
-
-   void setResource(MakeLeapsResource* resource) { resource_ = resource; setState(STATE_LOADED); emit resourceChanged(); }
-   void setResources(QList<QObject*> resources) { resources_ = resources; setState(STATE_LOADED); emit resourcesChanged(); }
+   void setRootProperty(MakeLeapsResourceProperty* property) { rootProperty_ = property; setState(STATE_LOADED); emit rootPropertyChanged(); }
 
    QString lastErrorMessage() const { return lastError_; }
 
 signals:
    void stateChanged();
    void isModifyableChanged();
-   void resourceChanged();
-   void resourcesChanged();
+   void rootPropertyChanged();
    void lastErrorMessageChanged();
 
 public slots:
@@ -281,13 +279,11 @@ public slots:
 private:
    void setState(State state) { if (state_ != state) { state_ = state; emit stateChanged(); } }
 
-   // JsonValue object_; // impl
    MakeLeaps* api_;
    State state_;
    QUrl url_;
    bool isModifyable_;
-   MakeLeapsResource* resource_;
-   QList<QObject*> resources_;
+   MakeLeapsResourceProperty* rootProperty_;
    QNetworkReply* currentReply_;
    QString lastError_;
 };
@@ -316,6 +312,10 @@ public:
    ConnectionState state() const;
    OAuth2Settings* settings();
    MakeLeapsEndpoint* root();
+
+   Q_INVOKABLE MakeLeapsEndpoint* createEndpoint(QString url) {
+      return new MakeLeapsEndpoint( *this, QUrl(url), false, this );
+   }
 
 signals:
    void stateChanged();
