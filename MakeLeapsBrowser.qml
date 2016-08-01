@@ -99,7 +99,6 @@ Page {
         forwardEnabled = future.length > 0
     }
 
-
     Popup {
         id: changeEndpointPopup
         x: ( parent.width - width ) / 2
@@ -135,51 +134,72 @@ Page {
         Connections {
             target: updateResourcePopup.endpoint
             onStateChanged: {
-                console.log( 'state changed: ', updateResourcePopup.endpoint.stateString )
+                if ( updateResourcePopup.endpoint.state === MakeLeapsEndpoint.STATE_LOADED ) {
+                    root.endpoint.load()
+                    updateResourcePopup.close()
+                }
+                if ( updateResourcePopup.endpoint.state === MakeLeapsEndpoint.STATE_ABORTING ) {
+                    updateResourcePopup.close()
+                }
             }
         }
 
-        Loader {
-            anchors.fill: parent
+        ColumnLayout {
 
-            Component {
-                id: noEndpoint
-                Label {
-                    anchors.centerIn: parent
-                    text: 'no endpoint'
+            Loader {
+                anchors.fill: parent
+
+                Component {
+                    id: noEndpoint
+                    Label {
+                        anchors.centerIn: parent
+                        text: 'no endpoint'
+                    }
                 }
-            }
-            Component {
-                id: loadingEndpoint
-                Label {
-                    anchors.centerIn: parent
-                    text: 'loading'
+                Component {
+                    id: loadingEndpoint
+                    Label {
+                        anchors.centerIn: parent
+                        text: qsTr('Loading...')
+                    }
                 }
-            }
-            Component {
-                id: errorEndpoint
-                Label {
-                    anchors.centerIn: parent
-                    text: 'error'
+                Component {
+                    id: errorEndpoint
+                    Label {
+                        anchors.centerIn: parent
+                        text: updateResourcePopup.endpoint.lastErrorMessage || 'Error'
+                    }
                 }
-            }
-            Component {
-                id: todoEndpoint
-                Label {
-                    anchors.centerIn: parent
-                    text: 'todo: ' + ( updateResourcePopup ? updateResourcePopup.endpoint.stateString : 'null' )
+                Component {
+                    id: todoEndpoint
+                    Label {
+                        anchors.centerIn: parent
+                        text: 'todo: ' + ( updateResourcePopup ? updateResourcePopup.endpoint.stateString : 'null' )
+                    }
                 }
-            }
-            sourceComponent: {
-                if ( !updateResourcePopup.endpoint ) return noEndpoint
-                switch ( updateResourcePopup.endpoint.state ) {
-                case MakeLeapsEndpoint.STATE_INVALID: return todoEndpoint
-                case MakeLeapsEndpoint.STATE_LOADING: return loadingEndpoint
-                case MakeLeapsEndpoint.STATE_ABORTING: return todoEndpoint
-                case MakeLeapsEndpoint.STATE_LOADED: return todoEndpoint
-                case MakeLeapsEndpoint.STATE_NEEDS_AUTHENTICATION: return errorEndpoint
-                case MakeLeapsEndpoint.STATE_ERROR: return errorEndpoint
-                default: return todoEndpoint
+                sourceComponent: {
+                    if ( !updateResourcePopup.endpoint ) return noEndpoint
+                    switch ( updateResourcePopup.endpoint.state ) {
+                    case MakeLeapsEndpoint.STATE_INVALID: return todoEndpoint
+                    case MakeLeapsEndpoint.STATE_LOADING: return loadingEndpoint
+                    case MakeLeapsEndpoint.STATE_ABORTING: return todoEndpoint
+                    case MakeLeapsEndpoint.STATE_LOADED: return todoEndpoint
+                    case MakeLeapsEndpoint.STATE_NEEDS_AUTHENTICATION: return errorEndpoint
+                    case MakeLeapsEndpoint.STATE_ERROR: return errorEndpoint
+                    default: return todoEndpoint
+                    }
+                }
+            } // loader
+            RowLayout {
+                anchors.horizontalCenter: parent.horizontalCenter
+                Button {
+                    text: 'Abort'
+                    enabled: updateResourcePopup.endpoint && updateResourcePopup.endpoint.state === MakeLeapsEndpoint.STATE_LOADING
+                    onClicked: updateResourcePopup.endpoint.abort()
+                }
+                Button {
+                    text: 'Close'
+                    onClicked: updateResourcePopup.close()
                 }
             }
         }
