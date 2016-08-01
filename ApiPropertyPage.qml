@@ -19,10 +19,12 @@ Loader {
     Component {
         id: scalarPage
         Label {
-            anchors.centerIn: parent
+            anchors.fill: parent
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
             text: {
                 if (currentProperty.isEndpoint) return '<a href="' + currentProperty.value + '">' + currentProperty.value + '</a>'
-                return 'scalar: ' + currentProperty.asScalar
+                return currentProperty.asScalar
             }
         }
     }
@@ -30,8 +32,9 @@ Loader {
         id: objectPage
         ListView {
             header: Label {
+                color: 'lightgray'
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: 'object'
+                text: 'object view'
             }
             anchors.fill: parent
             model: ( currentProperty && currentProperty.asObject ) ? currentProperty.asObject.properties : []
@@ -72,8 +75,9 @@ Loader {
         id: arrayPage
         ListView {
             header: Label {
+                color: 'lightgray'
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: 'array'
+                text: 'array view'
             }
             anchors.centerIn: parent
             model: currentProperty.asArray

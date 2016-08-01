@@ -148,8 +148,8 @@ public:
    bool isResource() const { return isResource_; }
    QString name() const
    {
-      if (object_.contains("name")) return object_["name"].toString();
-      if (object_.contains("display_name")) return object_["display_name"].toString();
+      if (object_.contains("name")) { auto n = object_["name"].toString(); if (!n.isEmpty()) return n; }
+      if (object_.contains("display_name")) { auto n = object_["display_name"].toString(); if (!n.isEmpty()) return n; }
       return "-";
    }
    QString url() const { return object_["url"].toString(); }
@@ -181,6 +181,7 @@ class MakeLeapsEndpoint : public QObject
    Q_OBJECT
    Q_PROPERTY(MakeLeaps* api READ api CONSTANT)
    Q_PROPERTY(State state READ state NOTIFY stateChanged)
+   Q_PROPERTY(QString stateString READ stateString NOTIFY stateChanged)
    Q_PROPERTY(bool isModifyable READ isModifyable NOTIFY isModifyableChanged)
    Q_PROPERTY(QString url READ urlString CONSTANT)
    Q_PROPERTY(ApiProperty* rootProperty READ rootProperty NOTIFY rootPropertyChanged)
@@ -207,12 +208,12 @@ public:
       , currentReply_(nullptr)
    { }
 
-   MakeLeapsEndpoint(MakeLeaps& api, const QUrl& url, bool isModifyable, QObject* parent = 0)
+   MakeLeapsEndpoint(MakeLeaps& api, const QUrl& url, QObject* parent = 0)
       : QObject(parent)
       , api_(&api)
       , state_(STATE_LOADING)
       , url_(url)
-      , isModifyable_(isModifyable)
+      , isModifyable_(false)
       , rootProperty_(nullptr)
       , currentReply_(nullptr)
    { }
@@ -226,6 +227,18 @@ public:
    bool isModifyable() const { return isModifyable_; }
 
    State state() const { return state_; }
+   QString stateString() const {
+      switch ( state_ ) {
+
+      case STATE_INVALID: return "STATE_INVALID";
+      case STATE_LOADING: return "STATE_LOADING";
+      case STATE_ABORTING: return "STATE_ABORTING";
+      case STATE_LOADED: return "STATE_LOADED";
+      case STATE_NEEDS_AUTHENTICATION: return "STATE_NEEDS_AUTHENTICATION";
+      case STATE_ERROR: return "STATE_ERROR";
+      default: return "<unknown>";
+      }
+   }
 
    ApiProperty* rootProperty() const { return rootProperty_; }
 
@@ -240,7 +253,8 @@ signals:
    void lastErrorMessageChanged();
 
 public slots:
-   void load();
+   void getResource();
+   void deleteResource();
    void abort();
 
 public slots:
@@ -284,7 +298,7 @@ public:
    MakeLeapsEndpoint* apiRoot();
 
    Q_INVOKABLE MakeLeapsEndpoint* createEndpoint(QString url) {
-      return new MakeLeapsEndpoint( *this, QUrl(url), false, this );
+      return new MakeLeapsEndpoint( *this, QUrl(url), this );
    }
 
 signals:
@@ -304,7 +318,8 @@ private:
    friend class MakeLeapsEndpoint;
 
    void setState(ConnectionState state);
-   QNetworkReply* loadEndpointUrl(const QUrl& url);
+   QNetworkReply* getResource(const QUrl& url);
+   QNetworkReply* deleteResource(const QUrl& url);
 
    ConnectionState state_;
    QNetworkAccessManager http_;

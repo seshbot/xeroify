@@ -194,7 +194,7 @@ ApplicationWindow {
             Component.onCompleted: {
                 makeLeaps.load()
             }
-            endpoint: makeLeaps.apiRoot
+            api: makeLeaps
         }
     }
 

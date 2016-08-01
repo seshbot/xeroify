@@ -18,7 +18,7 @@ bool IsResource( const QJsonValue& v ) {
    if (!v.isObject()) return false;
 
    auto object = v.toObject();
-   if ( !object.contains("name") || !object.contains("url")  || !object.value("url").toString().startsWith(MAKELEAPS_API_BASE) )
+   if ( !object.contains("url") || !object.value("url").toString().startsWith(MAKELEAPS_API_BASE) )
    {
       return false;
    }
@@ -98,7 +98,7 @@ ApiProperty::ApiProperty(MakeLeaps& api, const QString& name, const QJsonValue& 
 
 MakeLeapsEndpoint* ApiProperty::asEndpoint()
 {
-   return new MakeLeapsEndpoint(*api_, value_.toString(), false, this);
+   return new MakeLeapsEndpoint(*api_, value_.toString(), this);
 }
 
 ApiObject::ApiObject(MakeLeaps& api, const QJsonObject& object, QObject* parent)
@@ -122,7 +122,7 @@ MakeLeaps::MakeLeaps(QObject *parent)
    : QObject(parent)
    , state_(STATE_IDLE)
    , oauth_(MAKELEAPS_OAUTH_TOKEN_ENDPOINT, settings_.clientId(), settings_.clientSecret(), settings_.accessToken())
-   , rootEndpoint_(*this, QUrl(MAKELEAPS_API_BASE), false, this)
+   , rootEndpoint_(*this, QUrl(MAKELEAPS_API_BASE), this)
 {
    qDebug() << "creating makeleaps";
    connect(&http_, &QNetworkAccessManager::authenticationRequired, &oauth_, &OAuth2WithClientCredentialsGrant::onAuthenticationRequired);
@@ -154,7 +154,7 @@ void MakeLeaps::reloadAccessToken()
 
 void MakeLeaps::load()
 {
-    rootEndpoint_.load();
+    rootEndpoint_.getResource();
 }
 
 void MakeLeaps::abort()
@@ -162,15 +162,26 @@ void MakeLeaps::abort()
    rootEndpoint_.abort();
 }
 
-QNetworkReply* MakeLeaps::loadEndpointUrl(const QUrl& url)
+QNetworkReply* MakeLeaps::getResource(const QUrl& url)
 {
    auto request = QNetworkRequest { url };
    request.setRawHeader( "Accept", "application/json" );
 
    oauth_.authorize( request, QNetworkAccessManager::GetOperation, {} );
 
-   qDebug() << "making request: " << url.toString().toLatin1();
+   qDebug() << "making GET request: " << url.toString().toLatin1();
    return http_.get( request );
+}
+
+QNetworkReply* MakeLeaps::deleteResource(const QUrl& url)
+{
+   auto request = QNetworkRequest { url };
+   request.setRawHeader( "Accept", "application/json" );
+
+   oauth_.authorize( request, QNetworkAccessManager::DeleteOperation, {} );
+
+   qDebug() << "making DELETE request: " << url.toString().toLatin1();
+   return http_.deleteResource( request );
 }
 
 void MakeLeaps::setState(ConnectionState state)
@@ -193,7 +204,7 @@ void MakeLeaps::onAuthStateChanged()
       if ( rootEndpoint_.state() == MakeLeapsEndpoint::STATE_NEEDS_AUTHENTICATION )
       {
          qDebug() << "Reloading root endpoint";
-         rootEndpoint_.load();
+         rootEndpoint_.getResource();
       }
 
       setState( STATE_IDLE );
@@ -252,9 +263,18 @@ bool AllowHeaderIsModifiable(QNetworkReply* reply)
 
 }
 
-void MakeLeapsEndpoint::load()
+void MakeLeapsEndpoint::getResource()
 {
-   currentReply_ = api_->loadEndpointUrl(url_);
+   currentReply_ = api_->getResource(url_);
+   connect(currentReply_, &QNetworkReply::finished, this, &MakeLeapsEndpoint::onReplyFinished);
+   currentReply_->setParent(this);
+
+   setState(STATE_LOADING);
+}
+
+void MakeLeapsEndpoint::deleteResource()
+{
+   currentReply_ = api_->deleteResource(url_);
    connect(currentReply_, &QNetworkReply::finished, this, &MakeLeapsEndpoint::onReplyFinished);
    currentReply_->setParent(this);
 

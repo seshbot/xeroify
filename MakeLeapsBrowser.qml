@@ -7,7 +7,8 @@ import BusyBot 1.0
 
 Page {
     id: root
-    property MakeLeapsEndpoint endpoint
+    property MakeLeaps api
+    property MakeLeapsEndpoint endpoint: api.apiRoot
     property ApiProperty rootProperty: endpoint.rootProperty
     property ApiProperty selectedProperty: endpoint.rootProperty
 
@@ -36,16 +37,16 @@ Page {
         }
     }
 
-    onEndpointChanged: {
-        console.log(' *** endpoint changed: ', endpoint ? endpoint.url : 'null', endpoint.rootProperty ? 'set' : 'not set')
+    function deleteResource(resource) {
+        console.log('deleting resource ', resource.url)
+        var resourceEndpoint = api.createEndpoint(resource.url)
+        updateResourcePopup.endpoint = resourceEndpoint
+        updateResourcePopup.open()
+        resourceEndpoint.deleteResource()
     }
 
-    onRootPropertyChanged: {
-        console.log(' *** root property changed: ', root.rootProperty ? ( 'name=' + root.rootProperty.name ) : 'null')
-    }
-
-    onSelectedPropertyChanged: {
-        console.log(' *** current property changed: ', root.selectedProperty ? ( 'name=' + root.selectedProperty.name ) : 'null')
+    function editResource(resource) {
+        console.log('editing ', prop)
     }
 
     property bool invalid : !endpoint || endpoint.state == MakeLeapsEndpoint.STATE_INVALID
@@ -69,7 +70,7 @@ Page {
     function pushEndpoint(e) {
         pushHistory({ endpoint: root.endpoint, property: root.rootProperty })
         endpoint = e
-        endpoint.load()
+        endpoint.getResource()
     }
     function pushProperty(p) {
         pushHistory({ endpoint: root.endpoint, property: root.rootProperty })
@@ -125,6 +126,64 @@ Page {
             }
         }
     } // popup
+    Popup {
+        id: updateResourcePopup
+        x: ( parent.width - width ) / 2
+
+        property MakeLeapsEndpoint endpoint
+
+        Connections {
+            target: updateResourcePopup.endpoint
+            onStateChanged: {
+                console.log( 'state changed: ', updateResourcePopup.endpoint.stateString )
+            }
+        }
+
+        Loader {
+            anchors.fill: parent
+
+            Component {
+                id: noEndpoint
+                Label {
+                    anchors.centerIn: parent
+                    text: 'no endpoint'
+                }
+            }
+            Component {
+                id: loadingEndpoint
+                Label {
+                    anchors.centerIn: parent
+                    text: 'loading'
+                }
+            }
+            Component {
+                id: errorEndpoint
+                Label {
+                    anchors.centerIn: parent
+                    text: 'error'
+                }
+            }
+            Component {
+                id: todoEndpoint
+                Label {
+                    anchors.centerIn: parent
+                    text: 'todo: ' + ( updateResourcePopup ? updateResourcePopup.endpoint.stateString : 'null' )
+                }
+            }
+            sourceComponent: {
+                if ( !updateResourcePopup.endpoint ) return noEndpoint
+                switch ( updateResourcePopup.endpoint.state ) {
+                case MakeLeapsEndpoint.STATE_INVALID: return todoEndpoint
+                case MakeLeapsEndpoint.STATE_LOADING: return loadingEndpoint
+                case MakeLeapsEndpoint.STATE_ABORTING: return todoEndpoint
+                case MakeLeapsEndpoint.STATE_LOADED: return todoEndpoint
+                case MakeLeapsEndpoint.STATE_NEEDS_AUTHENTICATION: return errorEndpoint
+                case MakeLeapsEndpoint.STATE_ERROR: return errorEndpoint
+                default: return todoEndpoint
+                }
+            }
+        }
+    } // popup
     header: Pane {
         width: parent.width
         RowLayout {
@@ -161,14 +220,31 @@ Page {
                     if (invalid) return '';
                     if (error) return qsTr('Error: ') + endpoint.lastErrorMessage;
                     if (loading) return qsTr('loading');
+                    var linkUrl = endpoint.url;
                     var linkName = endpoint.name ? endpoint.name : endpoint.url;
-                    return '<a href="' + endpoint.url + '">' + linkName + '</a>';
+                    if (propertyIsResource(root.selectedProperty) || propertyIsResource(root.rootProperty)) {
+                        var prop = propertyIsResource(root.selectedProperty)
+                                ? root.selectedProperty
+                                : root.rootProperty
+                        var resource = prop.asObject
+                        linkUrl = resource.url
+                        linkName = resource.name
+                        if (!linkName || linkName === '-') {
+                            linkName = linkUrl
+                        }
+                    }
+
+                    return '<a href="' + linkUrl + '">' + linkName + '</a>';
                 }
                 onLinkActivated: {
                     changeEndpointPopup.open()
                 }
+                function propertyIsResource(prop) {
+                    return prop && prop.type === ApiProperty.TYPE_RESOURCE
+                }
             }
             Label {
+                color: 'lightgray'
                 text: {
                     if (!root.selectedProperty) return ''
                     var countString = ''
@@ -176,6 +252,38 @@ Page {
                     case ApiProperty.TYPE_ARRAY: countString = '[' + root.selectedProperty.asArray.length + ']'; break;
                     }
                     return root.selectedProperty.typeString + countString
+                }
+            }
+            Button {
+                id: resourceMenuButton
+                background: Rectangle {
+                    implicitWidth: headerLabel.height
+                    implicitHeight: headerLabel.height
+                }
+                text: qsTr('Options')
+
+                onClicked: resourceMenu.open()
+                Menu {
+                    id: resourceMenu
+                    y: resourceMenuButton.height
+                    MenuItem {
+                        text: qsTr('Add')
+                        enabled: endpoint.isModifyable
+                    }
+                    MenuItem {
+                        text: qsTr('Delete')
+                        enabled: endpoint.isModifyable && root.selectedProperty && root.selectedProperty.type == ApiProperty.TYPE_RESOURCE
+                        onClicked: {
+                            deleteResource(root.selectedProperty.asObject)
+                        }
+                    }
+                    MenuItem {
+                        text: qsTr('Edit')
+                        enabled: endpoint.isModifyable && root.selectedProperty && root.selectedProperty.type == ApiProperty.TYPE_RESOURCE
+                        onClicked: {
+                            editResource(root.selectedProperty.asObject)
+                        }
+                    }
                 }
             }
         }
@@ -196,14 +304,17 @@ Page {
                     onEndpointItemClicked: {
                         pushEndpoint(endpoint)
                     }
-                    onArrayItemClicked: {
-                        pushProperty(item)
+                    onScalarItemClicked: {
+                        root.selectedProperty = item
                     }
                     onObjectItemClicked: {
                         root.selectedProperty = item
                     }
                     onResourceItemClicked: {
                         root.selectedProperty = item
+                    }
+                    onArrayItemClicked: {
+                        pushProperty(item)
                     }
                 }
                 ApiPropertyPage {

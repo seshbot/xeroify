@@ -9,6 +9,7 @@ Loader {
     property ApiProperty selectedProperty
 
     signal endpointItemClicked(MakeLeapsEndpoint endpoint)
+    signal scalarItemClicked(ApiProperty item)
     signal arrayItemClicked(ApiProperty item)
     signal objectItemClicked(ApiProperty item)
     signal resourceItemClicked(ApiProperty item)
@@ -22,11 +23,14 @@ Loader {
             if (item.isEndpoint) {
                 endpointItemClicked(item.asEndpoint)
             }
+            else {
+                scalarItemClicked(item)
+            }
             break
         }
         case ApiProperty.TYPE_NULL:
         default:
-            console.log('ignoring click')
+            console.log('ignoring click on ' + item.typeString + ' type')
         }
     }
 
@@ -53,8 +57,9 @@ Loader {
         id: objectPage
         ListView {
             header: Label {
+                color: 'lightgray'
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: 'object'
+                text: 'object view'
             }
             anchors.centerIn: parent
             model: !currentProperty ? [ 'null', 'null' ] : !currentProperty.asObject ? [ currentProperty.typeString, '2'] : currentProperty.asObject.properties
@@ -80,8 +85,9 @@ Loader {
         id: resourcePage
         ListView {
             header: Label {
+                color: 'lightgray'
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: 'resource'
+                text: 'resource view'
             }
             anchors.centerIn: parent
             model: currentProperty.asObject.properties
@@ -106,8 +112,9 @@ Loader {
         id: arrayPage
         ListView {
             header: Label {
+                color: 'lightgray'
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: 'array'
+                text: 'array view'
             }
             anchors.centerIn: parent
             model: currentProperty && currentProperty.asArray ? currentProperty.asArray : []
