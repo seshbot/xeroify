@@ -20,29 +20,38 @@ ApplicationWindow {
         id: drawer
         width: Math.min(window.width, window.height) / 5 * 3
         height: window.height
-        ListView {
-            id: drawerList
+        Flickable {
             anchors.fill: parent
-            currentIndex: -1
-            highlightFollowsCurrentItem: true
-
-            delegate: ItemDelegate {
+            ColumnLayout {
                 width: parent.width
-                text: model.title
-                highlighted: swipeView.currentIndex === model.page
-                onClicked: {
-                    swipeView.currentIndex = model.page
-                    windowTitle.text = model.title
-                    drawer.close()
+                Label {
+                    Layout.fillWidth: true
+                    padding: 12
+                    font.bold: true
+                    background: Rectangle {
+                        color: Material.background
+                    }
+                    text: 'MakeLeaps'
+                }
+                ItemDelegate {
+                    Layout.fillWidth: true
+                    text: 'Browser'
+                    onClicked: {
+                        stackView.replace(makeLeapsPage)
+                        windowTitle.text = 'MakeLeaps Browser'
+                        drawer.close()
+                    }
+                }
+                ItemDelegate {
+                    Layout.fillWidth: true
+                    text: 'API Browser'
+                    onClicked: {
+                        stackView.replace(makeLeapsApiPage)
+                        windowTitle.text = 'MakeLeaps API Browser'
+                        drawer.close()
+                    }
                 }
             }
-
-            model: ListModel {
-                ListElement { title: qsTr('Shopify'); page: 1 }
-                ListElement { title: qsTr('Xero'); page: 2 }
-                ListElement { title: qsTr('MakeLeaps'); page: 3 }
-            }
-
             ScrollIndicator.vertical: ScrollIndicator { }
         }
     }
@@ -60,7 +69,7 @@ ApplicationWindow {
             ToolButton {
                 text: shopify.state === Shopify.STATE_LOADING ? qsTr('Abort') : qsTr('Load')
                 onClicked: {
-                    if ( swipeView.currentItem === shopifyPage )
+                    if ( stackView.currentItem === shopifyPage )
                     {
                         if (shopify.state === Shopify.STATE_LOADING) {
                             shopify.abort()
@@ -68,7 +77,7 @@ ApplicationWindow {
                             shopify.load()
                         }
                     }
-                    else if ( swipeView.currentItem === xeroPage )
+                    else if ( stackView.currentItem === xeroPage )
                     {
                         if (xero.state === Xero.STATE_LOADING) {
                             xero.abort()
@@ -117,13 +126,11 @@ ApplicationWindow {
         }
     }
 
-    SwipeView {
-        id: swipeView
+    StackView {
+        id: stackView
         anchors.fill: parent
-        currentIndex: 3
 
-        Page {
-            id: homePage
+        initialItem: Page {
             Pane {
                 anchors.centerIn: parent
                 Text {
@@ -144,11 +151,11 @@ ApplicationWindow {
                 }
             }
         }
-        Page {
+        Component {
             id: shopifyPage
             ListView {
                 id: orderList
-                anchors.fill: parent
+                //anchors.fill: parent
                 model: shopify.orders
                 delegate: ItemDelegate {
                     width: parent.width
@@ -167,11 +174,12 @@ ApplicationWindow {
                 ScrollIndicator.vertical: ScrollIndicator { }
             }
         }
-        Page {
+
+        Component {
             id: xeroPage
             ListView {
                 id: invoiceList
-                anchors.fill: parent
+                //anchors.fill: parent
                 model: xero.invoices
                 delegate: ItemDelegate {
                     width: parent.width
@@ -190,11 +198,27 @@ ApplicationWindow {
                 ScrollIndicator.vertical: ScrollIndicator { }
             }
         }
-        MakeLeapsBrowser {
-            Component.onCompleted: {
-                makeLeaps.load()
+        Component {
+            id: makeLeapsPage
+            MakeLeapsBrowser {
+                id: makeLeapsBrowser
+                //anchors.fill: parent
+                Component.onCompleted: {
+                    makeLeaps.load()
+                }
+                api: makeLeaps
             }
-            api: makeLeaps
+        }
+        Component {
+            id: makeLeapsApiPage
+            MakeLeapsApiBrowser {
+                id: makeLeapsApiBrowser
+                //anchors.fill: parent
+                Component.onCompleted: {
+                    makeLeaps.load()
+                }
+                api: makeLeaps
+            }
         }
     }
 
@@ -203,7 +227,7 @@ ApplicationWindow {
         property SimpleHttpConnectionSettings shopifyApiSettings
         property OAuthZeroLeggedConnectionSettings xeroApiSettings
         property OAuth2Settings makeLeapsApiSettings
-        x: (parent.width - width) / 2
+        x: 300 // (parent.width - width) / 2
         //y: parent.header / 6
         modal: true
         focus: true

@@ -4,8 +4,11 @@
         <file>ShopifyApiSettingsPanel.qml</file>
         <file>XeroApiSettingsPanel.qml</file>
         <file>MakeLeapsApiSettingsPanel.qml</file>
-        <file>MakeLeapsBrowser.qml</file>
+        <file>MakeLeapsApiBrowser.qml</file>
         <file>ApiNavBar.qml</file>
         <file>ApiPropertyPage.qml</file>
+        <file>MakeLeapsBrowser.qml</file>
+        <file>MakeLeapsNavBar.qml</file>
+        <file>MakeLeapsClientDetails.qml</file>
     </qresource>
 </RCC>

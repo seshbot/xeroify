@@ -227,6 +227,18 @@ void MakeLeaps::onRootEndpointStateChanged()
 
    if ( rootEndpoint_.state() == MakeLeapsEndpoint::STATE_LOADED )
    {
+      partners_.clear();
+
+      auto* response = rootEndpoint_.rootProperty()->asObject();
+      auto* partners = response->property("partners");
+      for ( auto* p: partners->asArray() )
+      {
+         auto* partner = qobject_cast< ApiProperty* >( p );
+         auto* partnerEndpoint = partner->asObject()->property("url")->asEndpoint();
+         partners_.append( new MakeLeapsPartner( partner->name(), partnerEndpoint, this ) );
+      }
+
+      emit partnersChanged();
       setState(MakeLeaps::STATE_IDLE);
    }
 
@@ -265,6 +277,7 @@ bool AllowHeaderIsModifiable(QNetworkReply* reply)
 
 void MakeLeapsEndpoint::getResource()
 {
+   qDebug() << "getting endpoint" << url_;
    currentReply_ = api_->getResource(url_);
    connect(currentReply_, &QNetworkReply::finished, this, &MakeLeapsEndpoint::onReplyFinished);
    currentReply_->setParent(this);

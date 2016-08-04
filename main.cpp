@@ -28,6 +28,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<Xero>("BusyBot", 1, 0, "Xero");
     qmlRegisterType<MakeLeaps>("BusyBot", 1, 0, "MakeLeaps");
     qmlRegisterType<MakeLeapsEndpoint>("BusyBot", 1, 0, "MakeLeapsEndpoint");
+    qmlRegisterType<MakeLeapsPartner>("BusyBot", 1, 0, "MakeLeapsPartner");
     qmlRegisterType<ApiProperty>("BusyBot", 1, 0, "ApiProperty");
     qmlRegisterUncreatableType<ApiObject>("BusyBot", 1, 0, "ApiObject", "Cannot create ApiObject");
     qmlRegisterUncreatableType<JsonValue>("BusyBot", 1, 0, "JsonValue", "Cannot create JsonValue");

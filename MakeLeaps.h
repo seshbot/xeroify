@@ -158,6 +158,8 @@ public:
 
    QList<QObject*> properties() { return properties_; }
 
+   ApiProperty* property(const QString& key) { return new ApiProperty( *api_, key, object_.value(key), this ); }
+
 private:
    MakeLeaps* api_;
    QJsonObject object_;
@@ -190,6 +192,7 @@ class MakeLeapsEndpoint : public QObject
 public:
    enum State
    {
+      STATE_IDLE,
       STATE_INVALID,
       STATE_LOADING,
       STATE_ABORTING,
@@ -211,7 +214,7 @@ public:
    MakeLeapsEndpoint(MakeLeaps& api, const QUrl& url, QObject* parent = 0)
       : QObject(parent)
       , api_(&api)
-      , state_(STATE_LOADING)
+      , state_(STATE_IDLE)
       , url_(url)
       , isModifyable_(false)
       , rootProperty_(nullptr)
@@ -229,7 +232,7 @@ public:
    State state() const { return state_; }
    QString stateString() const {
       switch ( state_ ) {
-
+      case STATE_IDLE: return "STATE_IDLE";
       case STATE_INVALID: return "STATE_INVALID";
       case STATE_LOADING: return "STATE_LOADING";
       case STATE_ABORTING: return "STATE_ABORTING";
@@ -272,6 +275,110 @@ private:
    QString lastError_;
 };
 
+class MakeLeapsPartner : public QObject
+{
+   Q_OBJECT
+   Q_PROPERTY(QString name READ name CONSTANT)
+   Q_PROPERTY(State state READ state NOTIFY stateChanged)
+   Q_PROPERTY(MakeLeapsEndpoint* contacts READ contacts CONSTANT)
+   Q_PROPERTY(MakeLeapsEndpoint* clients READ clients CONSTANT)
+   Q_PROPERTY(MakeLeapsEndpoint* documents READ documents CONSTANT)
+
+public:
+
+   enum State
+   {
+      STATE_IDLE,
+      STATE_LOADING,
+      STATE_LOADED,
+      STATE_ERROR,
+   };
+   Q_ENUMS( State )
+
+   MakeLeapsPartner(QObject* parent = 0)
+   : QObject( parent )
+   , name_( "-" )
+   , partnerEndpoint_( nullptr )
+   , clientsEndpoint_( nullptr )
+   , contactsEndpoint_( nullptr )
+   , documentsEndpoint_( nullptr )
+   { }
+
+   MakeLeapsPartner(const QString& name, MakeLeapsEndpoint* partnerEndpoint, QObject* parent = 0)
+   : QObject( parent )
+   , name_( name )
+   , partnerEndpoint_( partnerEndpoint )
+   , clientsEndpoint_( nullptr )
+   , contactsEndpoint_( nullptr )
+   , documentsEndpoint_( nullptr )
+   {
+      partnerEndpoint_->setParent( this );
+
+      connect( partnerEndpoint_, &MakeLeapsEndpoint::stateChanged, this, &MakeLeapsPartner::endpointStateChanged );
+
+      if ( partnerEndpoint_->state() == MakeLeapsEndpoint::STATE_IDLE )
+      {
+         partnerEndpoint_->getResource();
+      }
+
+      endpointStateChanged();
+   }
+
+   State state() const {
+      switch ( partnerEndpoint_->state() ) {
+      case MakeLeapsEndpoint::STATE_IDLE: return STATE_IDLE;
+      case MakeLeapsEndpoint::STATE_LOADED: return STATE_LOADED;
+      case MakeLeapsEndpoint::STATE_LOADING: return STATE_LOADING;
+      case MakeLeapsEndpoint::STATE_INVALID:
+      case MakeLeapsEndpoint::STATE_ABORTING:
+      case MakeLeapsEndpoint::STATE_NEEDS_AUTHENTICATION:
+      case MakeLeapsEndpoint::STATE_ERROR:
+      default: return STATE_ERROR;
+      }
+   }
+
+   QString name() const { return name_; }
+
+   MakeLeapsEndpoint* clients() const { return clientsEndpoint_; }
+   MakeLeapsEndpoint* contacts() const { return contactsEndpoint_; }
+   MakeLeapsEndpoint* documents() const { return documentsEndpoint_; }
+
+signals:
+   void stateChanged();
+
+private slots:
+   void endpointStateChanged() {
+      qDebug() << "partner endpoint state changed" << partnerEndpoint_->stateString();
+
+      emit stateChanged();
+
+      if ( partnerEndpoint_->state() != MakeLeapsEndpoint::STATE_LOADED ) return;
+
+      //"response": {
+      //   "url": "https://app.makeleaps.com/api/partner/1725857643916378083/",
+      //   "name": "Kyoto Brewing Co., Ltd",
+      //   "clients": "https://app.makeleaps.com/api/partner/1725857643916378083/client/",
+      //   "contacts": "https://app.makeleaps.com/api/partner/1725857643916378083/contact/",
+      //   "documents": "https://app.makeleaps.com/api/partner/1725857643916378083/document/",
+      //   "tags": "https://app.makeleaps.com/api/partner/1725857643916378083/tag/"
+      //}
+
+      auto* response = partnerEndpoint_->rootProperty()->asObject();
+      auto responseKeys = response->keys();
+
+      if (responseKeys.contains("contacts")) contactsEndpoint_ = response->property("contacts")->asEndpoint();
+      if (responseKeys.contains("clients")) clientsEndpoint_ = response->property("clients")->asEndpoint();
+      if (responseKeys.contains("documents")) documentsEndpoint_ = response->property("documents")->asEndpoint();
+   }
+
+private:
+
+   QString name_;
+   MakeLeapsEndpoint* partnerEndpoint_;
+   MakeLeapsEndpoint* clientsEndpoint_;
+   MakeLeapsEndpoint* contactsEndpoint_;
+   MakeLeapsEndpoint* documentsEndpoint_;
+};
 
 class MakeLeaps : public QObject
 {
@@ -279,6 +386,7 @@ class MakeLeaps : public QObject
    Q_PROPERTY(OAuth2Settings* settings READ settings)
    Q_PROPERTY(ConnectionState state READ state NOTIFY stateChanged)
    Q_PROPERTY(MakeLeapsEndpoint* apiRoot READ apiRoot NOTIFY rootChanged)
+   Q_PROPERTY(QList<QObject*> partners READ partners NOTIFY partnersChanged)
 
 public:
    enum ConnectionState
@@ -301,9 +409,45 @@ public:
       return new MakeLeapsEndpoint( *this, QUrl(url), this );
    }
 
+   Q_INVOKABLE bool hasPartner(QString name) {
+      if (rootEndpoint_.state() != MakeLeapsEndpoint::STATE_LOADED) return false;
+
+      for ( auto* p: partners_)
+      {
+         if ( qobject_cast< MakeLeapsPartner* >( p )->name().toLower() == name.toLower() )
+         {
+            return true;
+         }
+      }
+
+      return false;
+   }
+
+   Q_INVOKABLE MakeLeapsPartner* partner(QString name) {
+      if (rootEndpoint_.state() != MakeLeapsEndpoint::STATE_LOADED) {
+         qWarning() << "cannot retrieve partner" << name << "while endpoint is" << rootEndpoint_.stateString();
+         return nullptr;
+      }
+
+      for ( auto* p: partners_)
+      {
+         auto* partner = qobject_cast< MakeLeapsPartner* >( p );
+         if ( partner->name().toLower() == name.toLower() )
+         {
+            return partner;
+         }
+      }
+
+      qWarning() << "partner" << name << "not found";
+      return nullptr;
+   }
+
+   QList<QObject*> partners() const { return partners_; }
+
 signals:
    void stateChanged();
    void rootChanged();
+   void partnersChanged();
 
 public slots:
    void reloadAccessToken();
@@ -326,6 +470,8 @@ private:
    OAuth2Settings settings_;
    OAuth2WithClientCredentialsGrant oauth_;
    MakeLeapsEndpoint rootEndpoint_;
+
+   QList<QObject*> partners_;
 };
 
 
