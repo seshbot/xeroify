@@ -101,6 +101,13 @@ MakeLeapsEndpoint* ApiProperty::asEndpoint()
    return new MakeLeapsEndpoint(*api_, value_.toString(), this);
 }
 
+ApiObject::ApiObject(QObject* parent)
+   : QObject(parent)
+   , api_(nullptr)
+   , isResource_(false)
+{
+}
+
 ApiObject::ApiObject(MakeLeaps& api, const QJsonObject& object, QObject* parent)
    : QObject(parent)
    , api_(&api)
@@ -251,26 +258,38 @@ void MakeLeaps::onRootEndpointStateChanged()
 namespace
 {
 
-bool HeaderContainsModifyingOperations(const QByteArray& header)
+QVector<MakeLeapsEndpoint::Operation> GetAllowedOperations(QNetworkReply* reply)
 {
-   auto tokens = header.split(',');
-   for (auto& token: tokens)
+   auto tokens = reply->rawHeader("Allow").split(',');
+
+   QVector<MakeLeapsEndpoint::Operation> results;
+   for ( auto& token: tokens )
    {
       auto value = QString(token).trimmed().toUpper();
-      if ( value == "POST" ||
-           value == "PATCH" ||
-           value == "PUT" ||
-           value == "DELETE" )
+
+      if ( value == "GET" ) results.push_back(MakeLeapsEndpoint::OPERATION_GET);
+      else if ( value == "POST" ) results.push_back(MakeLeapsEndpoint::OPERATION_POST);
+      else if ( value == "PUT" ) results.push_back(MakeLeapsEndpoint::OPERATION_PUT);
+      else if ( value == "PATCH" ) results.push_back(MakeLeapsEndpoint::OPERATION_PATCH);
+      else if ( value == "DELETE" ) results.push_back(MakeLeapsEndpoint::OPERATION_DELETE);
+      else if ( value == "HEAD" ) results.push_back(MakeLeapsEndpoint::OPERATION_HEAD);
+      else if ( value == "OPTIONS" ) results.push_back(MakeLeapsEndpoint::OPERATION_OPTIONS);
+   }
+
+   return results;
+}
+
+bool AllowHeaderIsModifiable(QNetworkReply* reply)
+{
+   auto allowedOperations = GetAllowedOperations(reply);
+   for (auto op: allowedOperations)
+   {
+      if (op == MakeLeapsEndpoint::OPERATION_POST || op == MakeLeapsEndpoint::OPERATION_PATCH || op == MakeLeapsEndpoint::OPERATION_PUT || op == MakeLeapsEndpoint::OPERATION_DELETE)
       {
          return true;
       }
    }
    return false;
-}
-
-bool AllowHeaderIsModifiable(QNetworkReply* reply)
-{
-   return HeaderContainsModifyingOperations(reply->rawHeader("Allow"));
 }
 
 }
@@ -303,6 +322,8 @@ void MakeLeapsEndpoint::abort()
 void MakeLeapsEndpoint::onReplyFinished()
 {
    qDebug().nospace() << "got response (" << (currentReply_->isFinished() ? "" : "not ") << "finished)";
+   qDebug() << "allowed operations: " << currentReply_->rawHeader("Allow");
+
    switch ( currentReply_->error() )
    {
    case QNetworkReply::NoError:
@@ -320,6 +341,8 @@ void MakeLeapsEndpoint::onReplyFinished()
       setState( STATE_ERROR );
       return;
    }
+
+   allowedOperations_ = GetAllowedOperations(currentReply_);
 
    auto data = currentReply_->readAll();
    auto json = QJsonDocument::fromJson(data);

@@ -7,58 +7,69 @@ import Qt.labs.settings 1.0
 import BusyBot 1.0
 
 Page {
+    id: root
     property MakeLeaps api
+
+    Settings {
+        id: settings
+        property string currentPartner
+    }
+
+    // property popup
+    Popup {
+        id: resourceResponseComponent
+
+        property ApiProperty propertyToShow
+
+        modal: true
+        width: ( parent.width / 5 ) * 4
+        height: ( parent.height / 6 ) * 5
+        x: ( parent.width - width ) / 2
+
+        Page {
+            anchors.fill: parent
+            header: Label {
+                horizontalAlignment: Label.AlignHCenter
+                font.bold: true
+                text: resourceResponseComponent.propertyToShow.name
+            }
+
+            ColumnLayout {
+                anchors.fill: parent
+
+                ApiPropertyPage {
+                    id: propertyPage
+
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+
+                    currentProperty: resourceResponseComponent.propertyToShow
+                }
+            }
+        }
+    } // property popup
 
     Loader {
         anchors.fill: parent
 
-        Settings {
-            id: settings
-            property string currentPartner
-        }
-    //    Component.onCompleted: {
-    //        //api.c
-    //    }
-        Component.onDestruction: {
-            settings.currentPartner = 'xxx'
-        }
-
-        Popup {
-            id: changePartner
-            modal: true
-            width: 100
-            height: 100
-            ListView {
-                Layout.fillHeight: true
-                Layout.fillWidth: true
-                header: Label {
-                    width: parent.width
-                    horizontalAlignment: Label.AlignHCenter
-                    text: settings.currentPartner
-                }
-                model: api.partners
-                delegate: ItemDelegate {
-                    text: modelData.name
-                }
-            }
-        }
-
+        // loading component
         Component {
-            id: loadingPage
+            id: loadingComponent
             Label {
                 anchors.centerIn: parent
                 text: qsTr('Loading...')
             }
         }
 
+        // 'select partner' component
         Component {
-            id: selectPartnerPage
+            id: selectPartnerComponent
             ListView {
                 anchors.fill: parent
                 header: Label {
                     width: parent.width
                     horizontalAlignment: Label.AlignHCenter
-                    text: qsTr('Select a partner')
+                    text: ( api && api.partners.length ) ? qsTr('Select a partner') : qsTr('Loading partner information...')
                 }
                 model: api.partners
                 delegate: ItemDelegate {
@@ -68,11 +79,11 @@ Page {
                     }
                 }
             }
-
         }
 
+        // partner loaded page
         Component {
-            id: partnerPage
+            id: partnerLoadedComponent
             RowLayout {
                 id: partnerRow
                 anchors.fill: parent
@@ -80,79 +91,91 @@ Page {
                 property MakeLeapsPartner partner: settings.currentPartner ? api.partner( settings.currentPartner ) : null
                 property MakeLeapsEndpoint section
 
-                onPartnerChanged: {
-                    console.log('partner changed')
-                }
-
-                onSectionChanged: {
-                    console.log('section changed:', section ? section.url : '-')
-                }
-
+                // nav bar
                 MakeLeapsNavBar {
                     Layout.fillHeight: true
-                    Layout.minimumWidth: 150
+                    Layout.minimumWidth: root.width / 3
 
                     partner: partnerRow.partner
 
                     onResourceSelected: {
+                        if (!resource.url) {
+                            console.log( qsTr('selected resource %1 (%2) does not contain url').arg(resource.name).arg(type) )
+                            return
+                        }
                         console.log( qsTr('%1 resource selected: %2').arg(type).arg(resource.name) )
-                        if ( type === 'contacts' ) {}
-                        else if ( type === 'clients' ) {}
-                        else if ( type === 'documents' ) {}
+
+                        resourceDetailsPage.resource = resource
+                        if ( type === 'contacts' ) { resourceDetailsPage.content = contactComponent }
+                        else if ( type === 'clients' ) { resourceDetailsPage.content = clientComponent }
+                        else if ( type === 'documents' ) { resourceDetailsPage.content = documentComponent }
                     }
                 }
 
-                Page {
+                // details page
+                MakeLeapsResource {
+                    id: resourceDetailsPage
                     Layout.fillHeight: true
                     Layout.fillWidth: true
-                    header: Label {
-                        width: parent.width
-                        horizontalAlignment: Label.AlignHCenter
-                        text: settings.currentPartner
-                    }
-                    StackView {
-                        id: detailsView
-                        initialItem: Label {
-                            //anchors.centerIn: parent
-                            text: 'select something'
-                        }
 
-                        Component {
-                            id: documentsDetails
-                            Pane {
-                                Label {
-                                    anchors.centerIn: parent
-                                    text: 'documents selected'
-                                }
-                            }
+                    property ApiObject resource
+                    endpoint: resource && resource.property('url').asEndpoint
+
+                    onShowApiPropertyButtonClicked: {
+                        resourceResponseComponent.propertyToShow = prop
+                        resourceResponseComponent.open()
+                    }
+
+                    onNewResourceButtonClicked: {
+                        //endpoint.deleteResource()
+                    }
+
+                    onDeleteResourceButtonClicked: {
+                        endpoint.deleteResource()
+                    }
+
+                    // contact page
+                    Component {
+                        id: contactComponent
+                        MakeLeapsContactDetails {
+                            //anchors.fill: parent
+                            contact: resourceDetailsPage.resource
                         }
-                        Component {
-                            id: clientsDetails
-                            Pane {
-                                Label {
-                                    anchors.centerIn: parent
-                                    text: 'clients selected'
-                                }
-                            }
+                    }
+
+                    // client page
+                    Component {
+                        id: clientComponent
+                        MakeLeapsClientDetails {
+                            anchors.fill: parent
+                            client: resourceDetailsPage.resource
                         }
-                        Component {
-                            id: contactsDetails
-                            Pane {
-                                Label {
-                                    anchors.centerIn: parent
-                                    text: 'contacts selected'
-                                }
-                            }
+                    }
+
+                    // document page
+                    Component {
+                        id: documentComponent
+                        MakeLeapsDocumentDetails {
+                            anchors.fill: parent
+                            document: resourceDetailsPage.resource
                         }
+                    }
+
+                    content: Label {
+                        //anchors.fill: parent
+                        background: Rectangle {
+                            color: 'darkgray'
+                        }
+                        text: ''
                     }
                 }
             }
         } // partner page
 
         sourceComponent: {
-            if ( !api || api.state !== MakeLeaps.STATE_IDLE ) return loadingPage
-            if ( !settings.currentPartner || !api.hasPartner(settings.currentPartner) ) return selectPartnerPage
-            return partnerPage
+            if ( !api || api.state !== MakeLeaps.STATE_IDLE ) return loadingComponent
+            if ( !settings.currentPartner || !api.hasPartner(settings.currentPartner) ) return selectPartnerComponent
+            return partnerLoadedComponent
         }
     }
 }

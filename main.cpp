@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<MakeLeapsEndpoint>("BusyBot", 1, 0, "MakeLeapsEndpoint");
     qmlRegisterType<MakeLeapsPartner>("BusyBot", 1, 0, "MakeLeapsPartner");
     qmlRegisterType<ApiProperty>("BusyBot", 1, 0, "ApiProperty");
-    qmlRegisterUncreatableType<ApiObject>("BusyBot", 1, 0, "ApiObject", "Cannot create ApiObject");
+    qmlRegisterType<ApiObject>("BusyBot", 1, 0, "ApiObject");
     qmlRegisterUncreatableType<JsonValue>("BusyBot", 1, 0, "JsonValue", "Cannot create JsonValue");
 
     QQmlApplicationEngine engine;

@@ -68,29 +68,15 @@ import BusyBot 1.0
 //Email: storkyd@gmail.com
 //Address —
 
-Page {
+Pane {
     property ApiObject client
 
-    Loader {
-        Component {
-            id: loadingComponent
-            Label {
-                anchors.centerIn: parent
-                text: 'loading...'
-            }
+    GridLayout {
+        anchors.fill: parent
+        columns: 2
+        Label {
+            anchors.centerIn: parent
+            text: 'Client: ' + client.name
         }
-
-        Component {
-            id: loadedComponent
-            GridLayout {
-                anchors.fill: parent
-                columns: 2
-                Label {
-                    text: ''
-                }
-            }
-        }
-
-        sourceComponent: loadingComponent
     }
 }

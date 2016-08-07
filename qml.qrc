@@ -10,5 +10,8 @@
         <file>MakeLeapsBrowser.qml</file>
         <file>MakeLeapsNavBar.qml</file>
         <file>MakeLeapsClientDetails.qml</file>
+        <file>MakeLeapsResource.qml</file>
+        <file>MakeLeapsContactDetails.qml</file>
+        <file>MakeLeapsDocumentDetails.qml</file>
     </qresource>
 </RCC>

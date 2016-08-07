@@ -143,7 +143,8 @@ class ApiObject : public QObject
    Q_PROPERTY(QList<QObject*> properties READ properties CONSTANT)
 
 public:
-   explicit ApiObject(MakeLeaps& api, const QJsonObject& object, QObject* parent = 0);
+   explicit ApiObject(QObject* parent = 0);
+   ApiObject(MakeLeaps& api, const QJsonObject& object, QObject* parent = 0);
 
    bool isResource() const { return isResource_; }
    QString name() const
@@ -158,7 +159,7 @@ public:
 
    QList<QObject*> properties() { return properties_; }
 
-   ApiProperty* property(const QString& key) { return new ApiProperty( *api_, key, object_.value(key), this ); }
+   Q_INVOKABLE ApiProperty* property(const QString& key) { return new ApiProperty( *api_, key, object_.value(key), this ); }
 
 private:
    MakeLeaps* api_;
@@ -202,6 +203,18 @@ public:
    };
    Q_ENUMS(State)
 
+   enum Operation
+   {
+      OPERATION_GET,
+      OPERATION_POST,
+      OPERATION_PUT,
+      OPERATION_PATCH,
+      OPERATION_DELETE,
+      OPERATION_HEAD,
+      OPERATION_OPTIONS,
+   };
+   Q_ENUMS(Operation)
+
    MakeLeapsEndpoint(QObject* parent = 0)
       : QObject(parent)
       , api_(nullptr)
@@ -232,13 +245,13 @@ public:
    State state() const { return state_; }
    QString stateString() const {
       switch ( state_ ) {
-      case STATE_IDLE: return "STATE_IDLE";
-      case STATE_INVALID: return "STATE_INVALID";
-      case STATE_LOADING: return "STATE_LOADING";
-      case STATE_ABORTING: return "STATE_ABORTING";
-      case STATE_LOADED: return "STATE_LOADED";
-      case STATE_NEEDS_AUTHENTICATION: return "STATE_NEEDS_AUTHENTICATION";
-      case STATE_ERROR: return "STATE_ERROR";
+      case STATE_IDLE: return "idle";
+      case STATE_INVALID: return "invalid";
+      case STATE_LOADING: return "loading";
+      case STATE_ABORTING: return "aborting";
+      case STATE_LOADED: return "loaded";
+      case STATE_NEEDS_AUTHENTICATION: return "needs authentication";
+      case STATE_ERROR: return "error";
       default: return "<unknown>";
       }
    }
@@ -248,6 +261,8 @@ public:
    void setRootProperty(ApiProperty* property) { rootProperty_ = property; setState(STATE_LOADED); emit rootPropertyChanged(); }
 
    QString lastErrorMessage() const { return lastError_; }
+
+   Q_INVOKABLE bool isAllowed(Operation operation) { return allowedOperations_.contains(operation); }
 
 signals:
    void stateChanged();
@@ -273,6 +288,7 @@ private:
    ApiProperty* rootProperty_;
    QNetworkReply* currentReply_;
    QString lastError_;
+   QVector<Operation> allowedOperations_;
 };
 
 class MakeLeapsPartner : public QObject

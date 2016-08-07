@@ -30,14 +30,15 @@ Loader {
     }
     Component {
         id: objectPage
+
         ListView {
             header: Label {
                 color: 'lightgray'
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: 'object view'
+                text: 'object view: ' + ( currentProperty.name )
             }
             anchors.fill: parent
-            model: ( currentProperty && currentProperty.asObject ) ? currentProperty.asObject.properties : []
+            model: currentProperty.asObject.properties
             delegate: ItemDelegate {
                 width: parent.width
                 Row {
