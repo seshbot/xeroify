@@ -8,7 +8,89 @@ Page {
     id: root
 
     property MakeLeapsPartner partner
+
+    property var history: []
+    property var future: []
+    property bool backEnabled: history.length > 0
+    property bool forwardEnabled: future.length > 0
+
     signal resourceSelected(string type, ApiObject resource)
+
+    function pushHistory(h, clearFuture) {
+        clearFuture = typeof clearFuture !== 'undefined' ? clearFuture : true
+        history.push(h)
+        if (clearFuture) {
+            future = []
+        }
+        if (h.navBarStateChanged) {
+            var n = h.navBarState;
+            navBar.push(n.component, n.properties)
+        }
+        if (h.resourceStateChanged) {
+            var r = h.resourceState;
+            resourceSelected(r.type, r.object)
+        }
+    }
+
+    function popHistory() {
+        if (history.length == 0) {
+            console.log('cannot pop history (history empty)')
+            return
+        }
+
+        var h = history.pop()
+        if (h.navBarStateChanged) {
+            navBar.pop()
+        }
+        if (h.resourceStateChanged) {
+            var previousResourceState
+
+            for (var idx = history.length - 1; idx >= 0; idx--) {
+                var state = history[idx]
+                if (state.resourceStateChanged) {
+                    previousResourceState = state.resourceState
+                    break
+                }
+            }
+
+            if ( previousResourceState ) {
+                resourceSelected(previousResourceState.type, previousResourceState.object)
+            }
+        }
+
+        return h
+    }
+
+    function pushNavBar(component, properties) {
+        pushHistory({ navBarStateChanged: true, navBarState: { component: component, properties: properties } }, true)
+        updateNavButtons()
+    }
+    function pushResourceDetails(type, resourceObject) {
+        pushHistory({ resourceStateChanged: true, resourceState: { type: type, object: resourceObject } }, true)
+        updateNavButtons()
+    }
+
+    function forward() {
+        if (future.length <= 0) return
+
+        var h = future.pop()
+        pushHistory(h, false)
+
+        updateNavButtons()
+    }
+    function back() {
+        if (history.length <= 0) return
+
+        var h = popHistory()
+        future.push(h)
+
+        updateNavButtons()
+    }
+    function updateNavButtons() {
+        console.log('history is now ', history.length)
+        backEnabled = history.length > 0
+        forwardEnabled = future.length > 0
+    }
 
     header: Pane {
         width: parent.width
@@ -16,24 +98,24 @@ Page {
             width: parent.width
             Button {
                 text: "<"
-                //enabled: root.backEnabled
+                enabled: root.backEnabled
                 background: Rectangle {
                     implicitWidth: headerLabel.height
                     implicitHeight: headerLabel.height
                 }
                 onClicked: {
-                    //back()
+                    back()
                 }
             }
             Button {
                 text: ">"
-                //enabled: root.forwardEnabled
+                enabled: root.forwardEnabled
                 background: Rectangle {
                     implicitWidth: headerLabel.height
                     implicitHeight: headerLabel.height
                 }
                 onClicked: {
-                    //forward()
+                    forward()
                 }
             }
             Label {
@@ -42,7 +124,7 @@ Page {
                 padding: 6
                 horizontalAlignment: Text.AlignHCenter
                 color: 'gray'
-                text: 'header'
+                text: navBar.currentItem.type || ''
             }
             Button {
                 text: "+"
@@ -93,7 +175,7 @@ Page {
                                 width: endpointChildren.width
                                 text: modelData.name
                                 onClicked: {
-                                    resourceSelected( type, modelData.asObject )
+                                    pushResourceDetails( type, modelData.asObject )
                                 }
                             }
 
@@ -106,24 +188,6 @@ Page {
                         return endpointChildrenComponent
                     }
                 }
-            }
-        }
-        Component {
-            id: contactsNav
-            Label {
-                text: 'contacts'
-            }
-        }
-        Component {
-            id: clientsNav
-            Label {
-                text: 'clients'
-            }
-        }
-        Component {
-            id: documentsNav
-            Label {
-                text: 'documents'
             }
         }
 
@@ -143,9 +207,9 @@ Page {
                         text: model.name
                         onClicked: {
                             console.log('click:', model.path, partner)
-                            if ( model.path === 'contacts' ) navBar.push( endpointNavComponent, { type: 'contacts', endpoint: partner.contacts } )
-                            else if ( model.path === 'clients' ) navBar.push( endpointNavComponent, { type: 'clients', endpoint: partner.clients } )
-                            else if ( model.path === 'documents' ) navBar.push( endpointNavComponent, { type: 'documents', endpoint: partner.documents } )
+                            if ( model.path === 'contacts' ) pushNavBar( endpointNavComponent, { type: 'contacts', endpoint: partner.contacts } )
+                            else if ( model.path === 'clients' ) pushNavBar( endpointNavComponent, { type: 'clients', endpoint: partner.clients } )
+                            else if ( model.path === 'documents' ) pushNavBar( endpointNavComponent, { type: 'documents', endpoint: partner.documents } )
                         }
                     }
 
