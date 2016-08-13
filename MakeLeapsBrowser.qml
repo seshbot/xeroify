@@ -28,6 +28,7 @@ Page {
 
         Page {
             anchors.fill: parent
+
             header: Label {
                 horizontalAlignment: Label.AlignHCenter
                 font.bold: true
@@ -36,6 +37,7 @@ Page {
 
             ColumnLayout {
                 anchors.fill: parent
+                clip: true
 
                 ApiPropertyPage {
                     id: propertyPage

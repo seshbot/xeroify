@@ -25,6 +25,8 @@ int main(int argc, char *argv[])
     qmlRegisterType<OAuth2Settings>("BusyBot", 1, 0, "OAuth2Settings");
     qmlRegisterType<OAuth2WithClientCredentialsGrant>("BusyBot", 1, 0, "OAuth2WithClientCredentialsGrant");
     qmlRegisterType<Shopify>("BusyBot", 1, 0, "Shopify");
+    qmlRegisterType<Order>("BusyBot", 1, 0, "Order");
+    qmlRegisterType<OrderBook>("BusyBot", 1, 0, "OrderBook");
     qmlRegisterType<Xero>("BusyBot", 1, 0, "Xero");
     qmlRegisterType<MakeLeaps>("BusyBot", 1, 0, "MakeLeaps");
     qmlRegisterType<MakeLeapsEndpoint>("BusyBot", 1, 0, "MakeLeapsEndpoint");

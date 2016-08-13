@@ -3,20 +3,20 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
-#include <QDateTime>
 #include <QtDebug>
+#include <QUrlQuery>
 
 
 namespace
 {
 
 template <typename JsonT>
-QDateTime toDateTime(const JsonT& json)
+QDate toDateTime(const JsonT& json)
 {
-    QDateTime result;
+    QDate result;
     if (!json.isNull())
     {
-        result = QDateTime::fromString(json.toString(), Qt::ISODate);
+        result = QDate::fromString(json.toString(), Qt::ISODate);
     }
     return result;
 }
@@ -56,6 +56,7 @@ Order::FulfillmentStatus toFulfillmentStatus(const JsonT& json)
     if (value == "shipped") return Order::FULFILLMENT_STATUS_SHIPPED;
     if (value == "partial") return Order::FULFILLMENT_STATUS_PARTIAL;
     if (value == "unshipped") return Order::FULFILLMENT_STATUS_UNSHIPPED;
+    if (value == "fulfilled") return Order::FULFILLMENT_STATUS_FULFILLED;
     return Order::FULFILLMENT_STATUS_ANY;
 }
 
@@ -68,6 +69,235 @@ QString toString(const JsonT& json, const QString& defaultValue)
 
 } // anonymous namespace
 
+//
+// Address
+//
+
+
+QString Address::address1() const
+{
+    return json_["address1"].toString();
+}
+
+QString Address::address2() const
+{
+    return json_["address2"].toString();
+}
+
+QString Address::city() const
+{
+    return json_["city"].toString();
+}
+
+QString Address::company() const
+{
+    return json_["company"].toString();
+}
+
+QString Address::country() const
+{
+    return json_["country"].toString();
+}
+
+QString Address::countryCode() const
+{
+    return json_["countryCode"].toString();
+}
+
+QString Address::firstName() const
+{
+    return json_["firstName"].toString();
+}
+
+QString Address::lastName() const
+{
+    return json_["lastName"].toString();
+}
+
+QString Address::name() const
+{
+    return json_["name"].toString();
+}
+
+QString Address::phone() const
+{
+    return json_["phone"].toString();
+}
+
+QString Address::province() const
+{
+    return json_["province"].toString();
+}
+
+QString Address::provinceCode() const
+{
+    return json_["provinceCode"].toString();
+}
+
+QString Address::zip() const
+{
+    return json_["zip"].toString();
+}
+
+
+//
+// Customer
+//
+
+int Customer::id() const
+{
+    return json_["id"].toInt();
+}
+
+Address* Customer::defaultAddress()
+{
+    auto value = json_["default_address"];
+    auto obj = value.toObject();
+    return new Address(obj, this);
+}
+
+QString Customer::email() const
+{
+    return json_["email"].toString();
+}
+
+QString Customer::firstName() const
+{
+    return json_["first_name"].toString();
+}
+
+QString Customer::lastName() const
+{
+    return json_["last_name"].toString();
+}
+
+QString Customer::note() const
+{
+    return json_["note"].toString();
+}
+
+int Customer::orderCount() const
+{
+    return json_["orders_count"].toInt();
+}
+
+QString Customer::state() const
+{
+    return json_["state"].toString();
+}
+
+QString Customer::totalSpent() const
+{
+    return json_["total_spent"].toString();
+}
+
+QDate Customer::createdAt() const
+{
+    return toDateTime(json_["created_at"]);
+}
+
+QDate Customer::updatedAt() const
+{
+    return toDateTime(json_["updated_at"]);
+}
+
+QStringList Customer::tags() const
+{
+    auto value = json_["tags"];
+    if (value.isNull()) return {};
+    auto result = value.toString().split(',');
+    for (auto& token: result)
+    {
+        token = token.trimmed();
+    }
+    return result;
+}
+
+
+//
+// TaxLine
+//
+
+double TaxLine::rate() const
+{
+    return json_["rate"].toDouble();
+}
+
+QString TaxLine::price() const
+{
+    return json_["price"].toString();
+}
+
+QString TaxLine::title() const
+{
+    return json_["title"].toString();
+}
+
+
+//
+// LineItem
+//
+
+int LineItem::id() const
+{
+    return json_["id"].toInt();
+}
+
+QDate LineItem::createdAt() const
+{
+    return toDateTime(json_["created_at"]);
+}
+
+QDate LineItem::updatedAt() const
+{
+    return toDateTime(json_["updated_at"]);
+}
+
+QString LineItem::name() const
+{
+    return json_["name"].toString();
+}
+
+QString LineItem::title() const
+{
+    return json_["title"].toString();
+}
+
+QString LineItem::variantTitle() const
+{
+    return json_["variant_title"].toString();
+}
+
+QString LineItem::price() const
+{
+    return json_["price"].toString();
+}
+
+int LineItem::quantity() const
+{
+    return json_["quantity"].toInt();
+}
+
+QList<QObject*> LineItem::taxLines()
+{
+    QList<QObject*> results;
+    auto values = json_["tax_lines"].toArray();
+    for (auto value: values)
+    {
+        results.append(new TaxLine(value.toObject(), this));
+    }
+    return results;
+}
+
+
+//
+// Order
+//
+
+Order::Order(QObject *parent)
+    : QObject(parent)
+{
+}
 
 Order::Order(const QJsonObject& json, QObject *parent)
     : QObject(parent)
@@ -124,30 +354,30 @@ Order::FulfillmentStatus Order::fulfillmentStatus() const
 
 QString Order::fulfillmentStatusString() const
 {
-    return toString(json_["fulfillment_status"], "");
+    return toString(json_["fulfillment_status"], "not fulfilled");
 }
 
-QDateTime Order::createdAt() const
+QDate Order::createdAt() const
 {
     return toDateTime(json_["created_at"]);
 }
 
-QDateTime Order::updatedAt() const
+QDate Order::updatedAt() const
 {
     return toDateTime(json_["updated_at"]);
 }
 
-QDateTime Order::closedAt() const
+QDate Order::closedAt() const
 {
     return toDateTime(json_["closed_at"]);
 }
 
-QDateTime Order::cancelledAt() const
+QDate Order::cancelledAt() const
 {
     return toDateTime(json_["cancelled_at"]);
 }
 
-QDateTime Order::processedAt() const
+QDate Order::processedAt() const
 {
     return toDateTime(json_["processed_at"]);
 }
@@ -155,6 +385,11 @@ QDateTime Order::processedAt() const
 QString Order::note() const
 {
     return json_["note"].toString();
+}
+
+QString Order::currency() const
+{
+    return json_["currency"].toString();
 }
 
 QString Order::totalPrice() const
@@ -180,6 +415,22 @@ QString Order::totalTax() const
 bool Order::taxesIncluded() const
 {
     return json_["taxes_included"].toBool();
+}
+
+Customer* Order::customer()
+{
+    return new Customer(json_["customer"].toObject(), this);
+}
+
+QList<QObject*> Order::lineItems()
+{
+    QList<QObject*> results;
+    auto values = json_["line_items"].toArray();
+    for (auto value: values)
+    {
+        results.append(new LineItem(value.toObject(), this));
+    }
+    return results;
 }
 
 QStringList Order::tags() const
@@ -241,20 +492,108 @@ QStringList Order::tags() const
 
 //}
 
+//
+// OrderBook
+//
+
+OrderBook::OrderBook(QObject* parent)
+    : QObject(parent)
+    , shopify_(nullptr)
+    , state_(STATE_LOADING)
+    , currentReply_(nullptr)
+{
+}
+
+OrderBook::OrderBook(Shopify& shopify, QObject* parent)
+    : QObject(parent)
+    , shopify_(&shopify)
+    , state_(STATE_LOADING)
+    , currentReply_(nullptr)
+{
+    reload();
+}
+
+void OrderBook::onReplyFinished()
+{
+    if (currentReply_->error() != QNetworkReply::NoError)
+    {
+        errorMessage_ = currentReply_->errorString();
+        emit errorMessageChanged();
+        setState(STATE_ERROR);
+        return;
+    }
+    else
+    {
+        auto data = currentReply_->readAll();
+        auto json = QJsonDocument::fromJson(data);
+
+        qDebug("OrderBook response:\n%s", json.toJson(QJsonDocument::Indented).toStdString().c_str());
+
+        auto entityWrapper = json.object();
+        auto entities = entityWrapper[entityWrapper.keys()[0]].toArray();
+
+        orders_.clear();
+        for (auto entity: entities)
+        {
+            orders_.push_back(new Order(entity.toObject()));
+        }
+
+        emit ordersChanged();
+
+        setState(STATE_LOADED);
+    }
+
+    if (currentReply_)
+    {
+        currentReply_->deleteLater();
+        currentReply_ = nullptr;
+    }
+}
+
+void OrderBook::setState(State state)
+{
+    state_ = state;
+    emit stateChanged();
+}
+
+void OrderBook::reload()
+{
+    if (currentReply_)
+    {
+        currentReply_->deleteLater();
+    }
+
+    setState(STATE_LOADING);
+
+    QUrlQuery query;
+    qDebug() << "considering query params: " << filterByLastModifiedStart_ << ", " << filterByLastModifiedEnd_;
+    if (filterByLastModifiedStart_ && !lastModifiedStart_.isNull())
+    {
+        qDebug() << "adding lastmodified min: " << lastModifiedStart_.toString(Qt::ISODate);
+        // 2014-04-25T16:15:47-04:00
+        query.addQueryItem("updated_at_min", lastModifiedStart_.toString(Qt::ISODate));
+    }
+    if (filterByLastModifiedEnd_ && !lastModifiedEnd_.isNull())
+    {
+        qDebug() << "adding lastmodified max: " << lastModifiedStart_.toString(Qt::ISODate);
+        query.addQueryItem("updated_at_max", lastModifiedEnd_.toString(Qt::ISODate));
+    }
+
+    currentReply_ = shopify_->makeGetRequest("orders", query);
+    currentReply_->setParent(this);
+    connect(currentReply_, &QNetworkReply::finished, this, &OrderBook::onReplyFinished);
+}
+
+
+//
+// Shopify
+//
 
 Shopify::Shopify(QObject *parent)
     : QObject(parent)
-    , state_(STATE_IDLE)
     , settings_("shopify")
-    , currentReply_(nullptr)
 {
     qDebug() << "creating shopify";
-    QObject::connect(&http_, &QNetworkAccessManager::finished, this, &Shopify::onReplyFinished);
-}
-
-Shopify::ConnectionState Shopify::state() const
-{
-    return state_;
 }
 
 SimpleHttpConnectionSettings* Shopify::settings()
@@ -262,70 +601,15 @@ SimpleHttpConnectionSettings* Shopify::settings()
     return &settings_;
 }
 
-QList<QObject*> Shopify::orders() const
+QNetworkReply* Shopify::makeGetRequest(const QString& entity, const QUrlQuery& query)
 {
-    return orders_;
-}
-
-void Shopify::load()
-{
-    if (STATE_LOADING == state_) return;
-
-    qDebug() << "connecting...";
-    setState(STATE_LOADING);
-
     QNetworkRequest request;
-    request.setUrl(makeGetUrl("orders"));
+    request.setUrl(makeGetUrl(entity, query));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-    //QNetworkReply *reply = nam.post(request, QJsonDocument(json).toJson());
 
-    currentReply_ = http_.get(request);
-}
+    qDebug() << "requesting:" << request.url().url();
 
-void Shopify::abort()
-{
-    if (STATE_LOADING != state_) return;
-
-    qDebug() << "aborting...";
-    setState(STATE_ABORTING);
-    currentReply_->abort();
-}
-
-void Shopify::onReplyFinished(QNetworkReply* reply)
-{
-    reply->deleteLater();
-    currentReply_ = nullptr;
-
-    qDebug().nospace() << "got response (" << (reply->isFinished() ? "" : "not ") << "finished)";
-    if (reply->error() != QNetworkReply::NoError)
-    {
-        qDebug() << "Network error: " << reply->errorString();
-        setState(STATE_ERROR);
-        return;
-    }
-
-    setState(STATE_IDLE);
-
-    auto data = reply->readAll();
-    auto json = QJsonDocument::fromJson(data);
-
-    auto entityWrapper = json.object();
-    auto entities = entityWrapper[entityWrapper.keys()[0]].toArray();
-
-    qDebug().nospace() << "shopify response (" << entities.size() << " entities)";
-    orders_.clear();
-    for (auto entity: entities)
-    {
-        orders_.push_back(new Order(entity.toObject()));
-    }
-
-    emit ordersLoaded();
-}
-
-void Shopify::setState(ConnectionState state)
-{
-    state_ = state;
-    emit stateChanged();
+    return http_.get(request);
 }
 
 QUrl Shopify::makeBaseUrl() const
@@ -338,7 +622,15 @@ QUrl Shopify::makeBaseUrl() const
    return url;
 }
 
-QUrl Shopify::makeGetUrl(const QString& entity) const
+QUrl Shopify::makeGetUrl(const QString& entity, const QUrlQuery& query) const
 {
-   return makeBaseUrl().resolved(QUrl("/admin/" + entity + ".json"));
+   auto base = makeBaseUrl();
+
+   auto relative = QUrl("/admin/" + entity + ".json");
+   relative.setQuery(query);
+
+   auto resolved = base.resolved(relative);
+   qDebug() << "resolved url:" << resolved.url();
+
+   return resolved;
 }

@@ -31,6 +31,24 @@ ApplicationWindow {
                     background: Rectangle {
                         color: Material.background
                     }
+                    text: 'Shopify'
+                }
+                ItemDelegate {
+                    Layout.fillWidth: true
+                    text: 'Orders'
+                    onClicked: {
+                        stackView.replace(shopifyOrdersPage)
+                        windowTitle.text = 'Order Browser'
+                        drawer.close()
+                    }
+                }
+                Label {
+                    Layout.fillWidth: true
+                    padding: 12
+                    font.bold: true
+                    background: Rectangle {
+                        color: Material.background
+                    }
                     text: 'MakeLeaps'
                 }
                 ItemDelegate {
@@ -48,6 +66,15 @@ ApplicationWindow {
                     onClicked: {
                         stackView.replace(makeLeapsApiPage)
                         windowTitle.text = 'MakeLeaps API Browser'
+                        drawer.close()
+                    }
+                }
+                ItemDelegate {
+                    Layout.fillWidth: true
+                    text: 'Import'
+                    onClicked: {
+                        stackView.replace(importPage)
+                        windowTitle.text = 'Import'
                         drawer.close()
                     }
                 }
@@ -199,6 +226,16 @@ ApplicationWindow {
             }
         }
         Component {
+            id: shopifyOrdersPage
+
+            ShopifyOrderBook {
+                anchors.fill: parent
+                orderBook: OrderBook {
+                    shopify: window.shopify
+                }
+            }
+        }
+        Component {
             id: makeLeapsPage
             MakeLeapsBrowser {
                 id: makeLeapsBrowser
@@ -218,6 +255,17 @@ ApplicationWindow {
                     makeLeaps.load()
                 }
                 api: makeLeaps
+            }
+        }
+        Component {
+            id: importPage
+            MakeLeapsImporter {
+                //anchors.fill: parent
+                Component.onCompleted: {
+                    window.makeLeaps.load()
+                }
+                shopify: window.shopify
+                makeLeaps: window.makeLeaps
             }
         }
     }
