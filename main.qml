@@ -229,7 +229,7 @@ ApplicationWindow {
             id: shopifyOrdersPage
 
             ShopifyOrderBook {
-                anchors.fill: parent
+                //anchors.fill: parent
                 orderBook: OrderBook {
                     shopify: window.shopify
                 }

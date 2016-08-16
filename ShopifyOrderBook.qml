@@ -5,7 +5,7 @@ import QtQuick.Layouts 1.0
 import BusyBot 1.0
 
 Loader {
-    anchors.fill: parent
+    //anchors.fill: parent
     id: root
     property OrderBook orderBook
     property Order selectedOrder
@@ -181,11 +181,15 @@ Loader {
                         model: orderBook.orders
                         delegate: CheckDelegate {
                             width: parent.width
+                            padding: 6
                             highlighted: selectedOrder === modelData
                             GridLayout {
                                 width: parent.width - 50
+                                rowSpacing: 6
                                 columns: 2
-                                Text { text: modelData.name }
+                                Text {
+                                    Layout.leftMargin: 10
+                                    text: modelData.name }
                                 Row {
                                     Layout.alignment: Qt.AlignRight
                                     Text {
@@ -197,7 +201,10 @@ Loader {
                                     }
                                 }
 
-                                Text { text: modelData.customer.defaultAddress.name; color: 'darkgray' }
+                                Text {
+                                    Layout.leftMargin: 10
+                                    text: modelData.customer.defaultAddress.name; color: 'darkgray'
+                                }
                                 Row {
                                     Layout.alignment: Qt.AlignRight
                                     Text {
@@ -251,29 +258,20 @@ Loader {
 
                     sourceComponent: selectedOrder ? orderSelectedComponent : noOrderSelectedComponent
                 }
-
-//                Flickable {
-//                    anchors.fill: parent
-//                    contentWidth: jsonText.width
-//                    contentHeight: jsonText.height
-//                    clip: true
-//                    flickableDirection: Flickable.VerticalFlick
-//                    TextEdit {
-//                        id: jsonText
-//                        readOnly: true
-//                        text: selectedOrder ? selectedOrder.json : ''
-//                    }
-//                    ScrollIndicator.vertical: ScrollIndicator { }
-//                }
             } // details page
         }
     }
 
     Component {
         id: messageComponent
-        Label {
-            anchors.centerIn: root
-            text: message
+        Page {
+            Pane {
+                anchors.centerIn: parent
+                Text {
+                    wrapMode: Text.Wrap
+                    text: message
+                }
+            }
         }
     }
 

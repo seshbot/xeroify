@@ -184,6 +184,7 @@ class Order : public QObject
     Q_PROPERTY(int orderNumber READ orderNumber CONSTANT)
     Q_PROPERTY(QString name READ name CONSTANT)
     Q_PROPERTY(QString currency READ currency CONSTANT)
+    Q_PROPERTY(QString subtotalPrice READ subtotalPrice CONSTANT)
     Q_PROPERTY(QString totalPrice READ totalPrice CONSTANT)
     Q_PROPERTY(OrderStatus orderStatus READ orderStatus CONSTANT)
     Q_PROPERTY(QString orderStatusString READ orderStatusString CONSTANT)
@@ -196,9 +197,11 @@ class Order : public QObject
     Q_PROPERTY(QDate closedAt READ closedAt CONSTANT)
     Q_PROPERTY(QDate cancelledAt READ cancelledAt CONSTANT)
     Q_PROPERTY(QDate processedAt READ processedAt CONSTANT)
+    Q_PROPERTY(QString note READ note CONSTANT)
     Q_PROPERTY(Customer* customer READ customer CONSTANT)
     Q_PROPERTY(QList<QObject*> lineItems READ lineItems CONSTANT)
     Q_PROPERTY(QList<QObject*> taxLines READ taxLines CONSTANT)
+    Q_PROPERTY(QList<QObject*> shippingLines READ shippingLines CONSTANT)
     Q_PROPERTY(QStringList tags READ tags CONSTANT)
     Q_PROPERTY(QString json READ json CONSTANT)
 
@@ -267,8 +270,8 @@ public:
 
     Customer* customer();
     QList<QObject*> lineItems();
-
     QList<QObject*> taxLines();
+    QList<QObject*> shippingLines();
 
     QStringList tags() const;
 

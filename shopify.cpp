@@ -1,5 +1,6 @@
 #include "Shopify.h"
 
+#include <QLocale>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -25,9 +26,12 @@ QString toPrice(const QString& value, const QString& currency)
 {
     if (currency == "JPY")
     {
-        if (value.endsWith(".00"))
+        auto ok = false;
+        auto doubleValue = value.toDouble(&ok);
+        if (ok)
         {
-            return value.left(value.length() - 3);
+            auto locale = QLocale(QLocale::Japanese, QLocale::Japan);
+            return locale.toCurrencyString(doubleValue);
         }
     }
 
@@ -251,17 +255,17 @@ QString ShippingLine::code() const
 
 QString ShippingLine::price() const
 {
-    return json_["code"].toString();
+    return toPrice(json_["price"].toString(), currency_);
 }
 
 QString ShippingLine::title() const
 {
-    return json_["code"].toString();
+    return json_["title"].toString();
 }
 
 QString ShippingLine::source() const
 {
-    return json_["code"].toString();
+    return json_["source"].toString();
 }
 
 QList<QObject*> ShippingLine::taxLines()
@@ -482,6 +486,17 @@ QList<QObject*> Order::taxLines()
     for (auto value: values)
     {
         results.append(new TaxLine(value.toObject(), json_["currency"].toString(), this));
+    }
+    return results;
+}
+
+QList<QObject*> Order::shippingLines()
+{
+    QList<QObject*> results;
+    auto values = json_["shipping_lines"].toArray();
+    for (auto value: values)
+    {
+        results.append(new ShippingLine(value.toObject(), json_["currency"].toString(), this));
     }
     return results;
 }
