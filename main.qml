@@ -138,11 +138,11 @@ ApplicationWindow {
                     y: settingsMenuButton.height
                     MenuItem {
                         text: qsTr('Shopify')
-                        onClicked: settingsPopup.openShopify(shopify.settings)
+                        onTriggered: settingsPopup.openShopify(shopify.settings)
                     }
                     MenuItem {
                         text: qsTr('MakeLeaps')
-                        onClicked: {
+                        onTriggered: {
                             console.log('makeLeaps: ', makeLeaps)
                             console.log('makeLeaps settings: ', makeLeaps.settings)
                             settingsPopup.openMakeLeaps(makeLeaps.settings)

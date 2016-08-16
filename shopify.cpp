@@ -21,21 +21,28 @@ QDate toDateTime(const JsonT& json)
     return result;
 }
 
-template <typename JsonT>
-Order::OrderStatus toOrderStatus(const JsonT& json)
+QString toPrice(const QString& value, const QString& currency)
 {
-    if (json.isNull()) return Order::ORDER_STATUS_ANY;
-    auto value = json.toString();
-    if (value == "open") return Order::ORDER_STATUS_OPEN;
-    if (value == "closed") return Order::ORDER_STATUS_CLOSED;
-    if (value == "cancelled") return Order::ORDER_STATUS_CANCELLED;
-    return Order::ORDER_STATUS_ANY;
+    if (currency == "JPY")
+    {
+        if (value.endsWith(".00"))
+        {
+            return value.left(value.length() - 3);
+        }
+    }
+
+    return value;
+}
+
+QString toPrice(const QJsonValue& value, const QJsonValue& currency)
+{
+    return toPrice(value.toString(), currency.toString());
 }
 
 template <typename JsonT>
 Order::FinancialStatus toFinancialStatus(const JsonT& json)
 {
-    if (json.isNull()) return Order::FINANCIAL_STATUS_ANY;
+    if (json.isNull()) return Order::FINANCIAL_STATUS_ANY; // this is probably wrong
     auto value = json.toString();
     if (value == "authorized") return Order::FINANCIAL_STATUS_AUTHORIZED;
     if (value == "pending") return Order::FINANCIAL_STATUS_PENDING;
@@ -51,12 +58,11 @@ Order::FinancialStatus toFinancialStatus(const JsonT& json)
 template <typename JsonT>
 Order::FulfillmentStatus toFulfillmentStatus(const JsonT& json)
 {
-    if (json.isNull()) return Order::FULFILLMENT_STATUS_ANY;
+    if (json.isNull()) return Order::FULFILLMENT_STATUS_UNSHIPPED;
     auto value = json.toString();
-    if (value == "shipped") return Order::FULFILLMENT_STATUS_SHIPPED;
+    if (value == "fulfilled") return Order::FULFILLMENT_STATUS_SHIPPED;
     if (value == "partial") return Order::FULFILLMENT_STATUS_PARTIAL;
     if (value == "unshipped") return Order::FULFILLMENT_STATUS_UNSHIPPED;
-    if (value == "fulfilled") return Order::FULFILLMENT_STATUS_FULFILLED;
     return Order::FULFILLMENT_STATUS_ANY;
 }
 
@@ -101,17 +107,17 @@ QString Address::country() const
 
 QString Address::countryCode() const
 {
-    return json_["countryCode"].toString();
+    return json_["country_code"].toString();
 }
 
 QString Address::firstName() const
 {
-    return json_["firstName"].toString();
+    return json_["first_name"].toString();
 }
 
 QString Address::lastName() const
 {
-    return json_["lastName"].toString();
+    return json_["last_name"].toString();
 }
 
 QString Address::name() const
@@ -131,7 +137,7 @@ QString Address::province() const
 
 QString Address::provinceCode() const
 {
-    return json_["provinceCode"].toString();
+    return json_["province_code"].toString();
 }
 
 QString Address::zip() const
@@ -225,12 +231,48 @@ double TaxLine::rate() const
 
 QString TaxLine::price() const
 {
-    return json_["price"].toString();
+    return toPrice(json_["price"].toString(), currency_);
 }
 
 QString TaxLine::title() const
 {
     return json_["title"].toString();
+}
+
+
+//
+// ShippingLine
+//
+
+QString ShippingLine::code() const
+{
+    return json_["code"].toString();
+}
+
+QString ShippingLine::price() const
+{
+    return json_["code"].toString();
+}
+
+QString ShippingLine::title() const
+{
+    return json_["code"].toString();
+}
+
+QString ShippingLine::source() const
+{
+    return json_["code"].toString();
+}
+
+QList<QObject*> ShippingLine::taxLines()
+{
+    QList<QObject*> results;
+    auto values = json_["tax_lines"].toArray();
+    for (auto value: values)
+    {
+        results.append(new TaxLine(value.toObject(), currency_, this));
+    }
+    return results;
 }
 
 
@@ -284,7 +326,7 @@ QList<QObject*> LineItem::taxLines()
     auto values = json_["tax_lines"].toArray();
     for (auto value: values)
     {
-        results.append(new TaxLine(value.toObject(), this));
+        results.append(new TaxLine(value.toObject(), json_["currency"].toString(), this));
     }
     return results;
 }
@@ -394,17 +436,17 @@ QString Order::currency() const
 
 QString Order::totalPrice() const
 {
-    return json_["total_price"].toString();
+    return toPrice(json_["total_price"], json_["currency"]);
 }
 
 QString Order::subtotalPrice() const
 {
-    return json_["subtotal_price"].toString();
+    return toPrice(json_["subtotal_price"], json_["currency"]);
 }
 
 QString Order::totalLineItemsPrice() const
 {
-    return json_["total_line_items_price"].toString();
+    return toPrice(json_["total_line_items_price"], json_["currency"]);
 }
 
 QString Order::totalTax() const
@@ -429,6 +471,17 @@ QList<QObject*> Order::lineItems()
     for (auto value: values)
     {
         results.append(new LineItem(value.toObject(), this));
+    }
+    return results;
+}
+
+QList<QObject*> Order::taxLines()
+{
+    QList<QObject*> results;
+    auto values = json_["tax_lines"].toArray();
+    for (auto value: values)
+    {
+        results.append(new TaxLine(value.toObject(), json_["currency"].toString(), this));
     }
     return results;
 }
@@ -500,6 +553,9 @@ OrderBook::OrderBook(QObject* parent)
     : QObject(parent)
     , shopify_(nullptr)
     , state_(STATE_LOADING)
+    , filterShowUnshipped_(true)
+    , filterShowPartial_(true)
+    , filterShowShipped_(false)
     , currentReply_(nullptr)
 {
 }
@@ -508,6 +564,9 @@ OrderBook::OrderBook(Shopify& shopify, QObject* parent)
     : QObject(parent)
     , shopify_(&shopify)
     , state_(STATE_LOADING)
+    , filterShowUnshipped_(true)
+    , filterShowPartial_(true)
+    , filterShowShipped_(false)
     , currentReply_(nullptr)
 {
     reload();
@@ -560,6 +619,7 @@ void OrderBook::reload()
 {
     if (currentReply_)
     {
+        currentReply_->abort();
         currentReply_->deleteLater();
     }
 
@@ -578,6 +638,10 @@ void OrderBook::reload()
         qDebug() << "adding lastmodified max: " << lastModifiedStart_.toString(Qt::ISODate);
         query.addQueryItem("updated_at_max", lastModifiedEnd_.toString(Qt::ISODate));
     }
+
+    if (filterShowPartial_) query.addQueryItem("fulfillment_status", "partial");
+    if (filterShowUnshipped_) query.addQueryItem("fulfillment_status", "unshipped");
+    if (filterShowShipped_) query.addQueryItem("fulfillment_status", "shipped");
 
     currentReply_ = shopify_->makeGetRequest("orders", query);
     currentReply_->setParent(this);

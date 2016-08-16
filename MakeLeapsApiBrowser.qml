@@ -294,14 +294,14 @@ Page {
                     MenuItem {
                         text: qsTr('Delete')
                         enabled: endpoint.isModifyable && root.selectedProperty && root.selectedProperty.type == ApiProperty.TYPE_RESOURCE
-                        onClicked: {
+                        onTriggered: {
                             deleteResource(root.selectedProperty.asObject)
                         }
                     }
                     MenuItem {
                         text: qsTr('Edit')
                         enabled: endpoint.isModifyable && root.selectedProperty && root.selectedProperty.type == ApiProperty.TYPE_RESOURCE
-                        onClicked: {
+                        onTriggered: {
                             editResource(root.selectedProperty.asObject)
                         }
                     }

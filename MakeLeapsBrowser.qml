@@ -32,7 +32,7 @@ Page {
             header: Label {
                 horizontalAlignment: Label.AlignHCenter
                 font.bold: true
-                text: resourceResponseComponent.propertyToShow.name
+                text: resourceResponseComponent.propertyToShow ? resourceResponseComponent.propertyToShow.name : '-'
             }
 
             ColumnLayout {

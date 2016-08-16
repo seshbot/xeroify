@@ -5,6 +5,7 @@ import QtQuick.Layouts 1.0
 import BusyBot 1.0
 
 Loader {
+    anchors.fill: parent
     id: root
     property OrderBook orderBook
     property Order selectedOrder
@@ -80,7 +81,7 @@ Loader {
                         padding: 0
                         Button {
                             anchors.right: parent.right
-                            text: qsTr('Filter')
+                            text: orderBook.state === OrderBook.STATE_LOADING ? qsTr('Loading') : qsTr('Filter')
                             onClicked: nav.isFilterShowing = !nav.isFilterShowing
                         }
                     }
@@ -107,37 +108,67 @@ Loader {
                         GridLayout {
                             anchors.fill: parent
                             columns: 3
-
                             CheckBox {
-                                id: startDateCheckBox
-                                text: qsTr('Start Date')
-                                checked: root.orderBook.filterByLastModifiedStart
-                                onCheckedChanged: root.orderBook.filterByLastModifiedStart = checked
+                                text: qsTr('Unshipped')
+                                checked: root.orderBook.showUnshipped
+                                onClicked: {
+                                    root.orderBook.showUnshipped = checked
+                                    checked = Qt.binding(function () {
+                                        return root.orderBook.showUnshipped
+                                    })
+                                }
                             }
-                            Label {
-                                enabled: startDateCheckBox.checked
-                                text: '<a href="xxx">' + nav.startDate.toDateString() + '</a>'
-                                onLinkActivated: navFilter.openStartDateDialog()
+                            CheckBox {
+                                text: qsTr('Partial')
+                                checked: root.orderBook.showPartial
+                                onClicked: {
+                                    root.orderBook.showPartial = checked
+                                    checked = Qt.binding(function () {
+                                        return root.orderBook.showPartial
+                                    })
+                                }
                             }
-                            Button {
-                                text: qsTr('Change')
-                                onClicked: navFilter.openStartDateDialog()
+                            CheckBox {
+                                text: qsTr('Shipped')
+                                checked: root.orderBook.showShipped
+                                onClicked: {
+                                    root.orderBook.showShipped = checked
+                                    checked = Qt.binding(function () {
+                                        return root.orderBook.showShipped
+                                    })
+                                }
                             }
 
-                            CheckBox {
-                                id: endDateCheckBox
-                                text: qsTr('End Date')
-                                checked: root.orderBook.filterByLastModifiedEnd
-                                onCheckedChanged: root.orderBook.filterByLastModifiedEnd = checked
-                            }
-                            Label {
-                                text: '<a href="xxx">' + nav.endDate.toDateString() + '</a>'
-                                onLinkActivated: navFilter.openEndDateDialog()
-                            }
-                            Button {
-                                text: qsTr('Change')
-                                onClicked: navFilter.openEndDateDialog()
-                            }
+//                            CheckBox {
+//                                id: startDateCheckBox
+//                                text: qsTr('Start Date')
+//                                checked: root.orderBook.filterByLastModifiedStart
+//                                onCheckedChanged: root.orderBook.filterByLastModifiedStart = checked
+//                            }
+//                            Label {
+//                                enabled: startDateCheckBox.checked
+//                                text: '<a href="xxx">' + nav.startDate.toDateString() + '</a>'
+//                                onLinkActivated: navFilter.openStartDateDialog()
+//                            }
+//                            Button {
+//                                text: qsTr('Change')
+//                                onClicked: navFilter.openStartDateDialog()
+//                            }
+
+//                            CheckBox {
+//                                id: endDateCheckBox
+//                                text: qsTr('End Date')
+//                                checked: root.orderBook.filterByLastModifiedEnd
+//                                onCheckedChanged: root.orderBook.filterByLastModifiedEnd = checked
+//                            }
+//                            Label {
+//                                text: '<a href="xxx">' + nav.endDate.toDateString() + '</a>'
+//                                onLinkActivated: navFilter.openEndDateDialog()
+//                            }
+//                            Button {
+//                                text: qsTr('Change')
+//                                onClicked: navFilter.openEndDateDialog()
+//                            }
                         }
                     }
 
@@ -176,7 +207,7 @@ Loader {
                                     Text { text: ' \u00B7 '; color: 'darkgray' }
                                     Text {
                                         text: modelData.fulfillmentStatusString
-                                        color: modelData.fulfillmentStatus === Order.FULFILLMENT_STATUS_FULFILLED ? 'green' : 'blue'
+                                        color: modelData.fulfillmentStatus === Order.FULFILLMENT_STATUS_SHIPPED ? 'green' : 'blue'
                                     }
                                 }
                             }
@@ -202,19 +233,38 @@ Loader {
                     }
                 }
 
-                Flickable {
+                Loader {
                     anchors.fill: parent
-                    contentWidth: jsonText.width
-                    contentHeight: jsonText.height
-                    clip: true
-                    flickableDirection: Flickable.VerticalFlick
-                    TextEdit {
-                        id: jsonText
-                        readOnly: true
-                        text: selectedOrder ? selectedOrder.json : ''
+                    Component {
+                        id: orderSelectedComponent
+                        OrderDetails {
+                            anchors.fill: parent
+                            order: selectedOrder
+                        }
                     }
-                    ScrollIndicator.vertical: ScrollIndicator { }
+                    Component {
+                        id: noOrderSelectedComponent
+                        Label {
+                            text: ''
+                        }
+                    }
+
+                    sourceComponent: selectedOrder ? orderSelectedComponent : noOrderSelectedComponent
                 }
+
+//                Flickable {
+//                    anchors.fill: parent
+//                    contentWidth: jsonText.width
+//                    contentHeight: jsonText.height
+//                    clip: true
+//                    flickableDirection: Flickable.VerticalFlick
+//                    TextEdit {
+//                        id: jsonText
+//                        readOnly: true
+//                        text: selectedOrder ? selectedOrder.json : ''
+//                    }
+//                    ScrollIndicator.vertical: ScrollIndicator { }
+//                }
             } // details page
         }
     }
@@ -228,7 +278,7 @@ Loader {
     }
 
     sourceComponent: {
-        if (orderBook && orderBook.state === OrderBook.STATE_LOADED) return loadedComponent
+        if (orderBook && orderBook.orders.length > 0) return loadedComponent
         if (!orderBook) {
             message = 'you shouldnt see this'
         }

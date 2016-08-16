@@ -15,5 +15,6 @@
         <file>MakeLeapsDocumentDetails.qml</file>
         <file>MakeLeapsImporter.qml</file>
         <file>ShopifyOrderBook.qml</file>
+        <file>OrderDetails.qml</file>
     </qresource>
 </RCC>

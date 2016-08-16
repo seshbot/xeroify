@@ -109,13 +109,41 @@ class TaxLine : public QObject
 
 public:
     explicit TaxLine(QObject *parent = 0) : QObject(parent) { }
-    TaxLine(const QJsonObject& json, QObject *parent = 0) : QObject(parent), json_(json) { }
+    TaxLine(const QJsonObject& json, const QString& currency, QObject *parent = 0) : QObject(parent), currency_(currency), json_(json) { }
 
     double rate() const;
     QString price() const;
     QString title() const;
 
 private:
+    QString currency_;
+    QJsonObject json_;
+};
+
+class ShippingLine : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY(QString code READ code CONSTANT)
+    Q_PROPERTY(QString price READ price CONSTANT)
+    Q_PROPERTY(QString title READ title CONSTANT)
+    Q_PROPERTY(QString source READ source CONSTANT)
+    Q_PROPERTY(QList<QObject*> taxLines READ taxLines CONSTANT)
+
+public:
+    explicit ShippingLine(QObject* parent = 0) : QObject(parent) { }
+    ShippingLine(const QJsonObject& json, const QString& currency, QObject* parent = 0) : QObject(parent), currency_(currency), json_(json) { }
+
+    QString code() const;
+    QString price() const;
+    QString title() const;
+    QString source() const;
+
+    QList<QObject*> taxLines();
+
+    QString json() const { return QJsonDocument(json_).toJson(QJsonDocument::Indented); }
+
+private:
+    QString currency_;
     QJsonObject json_;
 };
 
@@ -125,6 +153,7 @@ class LineItem : public QObject
     Q_PROPERTY(int id READ id CONSTANT)
     Q_PROPERTY(QDate createdAt READ createdAt CONSTANT)
     Q_PROPERTY(QDate updatedAt READ updatedAt CONSTANT)
+    Q_PROPERTY(QList<QObject*> taxLines READ taxLines CONSTANT)
 
 public:
     explicit LineItem(QObject *parent = 0) : QObject(parent) { }
@@ -169,21 +198,23 @@ class Order : public QObject
     Q_PROPERTY(QDate processedAt READ processedAt CONSTANT)
     Q_PROPERTY(Customer* customer READ customer CONSTANT)
     Q_PROPERTY(QList<QObject*> lineItems READ lineItems CONSTANT)
+    Q_PROPERTY(QList<QObject*> taxLines READ taxLines CONSTANT)
     Q_PROPERTY(QStringList tags READ tags CONSTANT)
     Q_PROPERTY(QString json READ json CONSTANT)
 
 public:
     enum OrderStatus
     {
+        ORDER_STATUS_ANY,
         ORDER_STATUS_OPEN,
         ORDER_STATUS_CLOSED,
         ORDER_STATUS_CANCELLED,
-        ORDER_STATUS_ANY,
     };
     Q_ENUMS( OrderStatus )
 
     enum FinancialStatus
     {
+        FINANCIAL_STATUS_ANY,
         FINANCIAL_STATUS_AUTHORIZED,
         FINANCIAL_STATUS_PENDING,
         FINANCIAL_STATUS_PAID,
@@ -191,7 +222,6 @@ public:
         FINANCIAL_STATUS_REFUNDED,
         FINANCIAL_STATUS_VOIDED,
         FINANCIAL_STATUS_PARTIALLY_REFUNDED,
-        FINANCIAL_STATUS_ANY,
         FINANCIAL_STATUS_UNPAID,
     };
     Q_ENUMS( FinancialStatus )
@@ -199,10 +229,9 @@ public:
     enum FulfillmentStatus
     {
         FULFILLMENT_STATUS_ANY,
-        FULFILLMENT_STATUS_PARTIAL,
-        FULFILLMENT_STATUS_FULFILLED,
-        FULFILLMENT_STATUS_UNSHIPPED,
-        FULFILLMENT_STATUS_SHIPPED,
+        FULFILLMENT_STATUS_PARTIAL = 1,
+        FULFILLMENT_STATUS_UNSHIPPED = 2,
+        FULFILLMENT_STATUS_SHIPPED = 4,
     };
     Q_ENUMS( FulfillmentStatus )
 
@@ -239,6 +268,8 @@ public:
     Customer* customer();
     QList<QObject*> lineItems();
 
+    QList<QObject*> taxLines();
+
     QStringList tags() const;
 
     QString json() const { return QJsonDocument(json_).toJson(QJsonDocument::Indented); }
@@ -262,6 +293,9 @@ class OrderBook : public QObject
     Q_PROPERTY(QDate lastModifiedStart READ lastModifiedStart WRITE setLastModifiedStart)
     Q_PROPERTY(QDate lastModifiedEnd READ lastModifiedEnd WRITE setLastModifiedEnd)
     Q_PROPERTY(QList<QObject*> orders READ orders NOTIFY ordersChanged)
+    Q_PROPERTY(bool showUnshipped READ showUnshipped WRITE setShowUnshipped NOTIFY showUnshippedUpdated)
+    Q_PROPERTY(bool showPartial READ showPartial WRITE setShowPartial NOTIFY showPartialUpdated)
+    Q_PROPERTY(bool showShipped READ showShipped WRITE setShowShipped NOTIFY showShippedUpdated)
 
 public:
     enum State
@@ -271,6 +305,8 @@ public:
         STATE_LOADED,
     };
     Q_ENUMS(State)
+
+    // the app uses 'Open, Unfulfilled, Unpaid'
 
     explicit OrderBook(QObject* parent = 0);
     OrderBook(Shopify& shopify, QObject* parent = 0);
@@ -294,6 +330,13 @@ public:
     void setLastModifiedEnd(const QDate& date) { lastModifiedEnd_ = date; if (filterByLastModifiedEnd_) reload(); }
     QDate lastModifiedEnd() const { return lastModifiedEnd_; }
 
+    bool showUnshipped() const { return filterShowUnshipped_; }
+    bool showPartial() const { return filterShowPartial_; }
+    bool showShipped() const { return filterShowShipped_; }
+
+    void setShowUnshipped(bool value) { filterShowUnshipped_ = value; reload(); }
+    void setShowPartial(bool value) { filterShowPartial_ = value; reload(); }
+    void setShowShipped(bool value) { filterShowShipped_ = value; reload(); }
     QList<QObject*> orders() { return orders_; }
 
 signals:
@@ -302,6 +345,9 @@ signals:
     void errorMessageChanged();
     void filterByLastModifiedStartChanged();
     void filterByLastModifiedEndChanged();
+    void showUnshippedUpdated();
+    void showPartialUpdated();
+    void showShippedUpdated();
 
 private slots:
     void onReplyFinished();
@@ -321,6 +367,9 @@ private:
     bool filterByLastModifiedEnd_;
     QDate lastModifiedStart_;
     QDate lastModifiedEnd_;
+    bool filterShowUnshipped_;
+    bool filterShowPartial_;
+    bool filterShowShipped_;
 
     QList<QObject*> orders_;
 
