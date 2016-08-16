@@ -316,12 +316,17 @@ QString LineItem::variantTitle() const
 
 QString LineItem::price() const
 {
-    return json_["price"].toString();
+    return toPrice(json_["price"].toString(), currency_);
 }
 
 int LineItem::quantity() const
 {
     return json_["quantity"].toInt();
+}
+
+int LineItem::fulfillableQuantity() const
+{
+    return json_["fulfillable_quantity"].toInt();
 }
 
 QList<QObject*> LineItem::taxLines()
@@ -474,7 +479,7 @@ QList<QObject*> Order::lineItems()
     auto values = json_["line_items"].toArray();
     for (auto value: values)
     {
-        results.append(new LineItem(value.toObject(), this));
+        results.append(new LineItem(value.toObject(), json_["currency"].toString(), this));
     }
     return results;
 }

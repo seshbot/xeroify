@@ -151,13 +151,19 @@ class LineItem : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(int id READ id CONSTANT)
+    Q_PROPERTY(QString name READ name CONSTANT)
+    Q_PROPERTY(QString title READ title CONSTANT)
+    Q_PROPERTY(QString variantTitle READ variantTitle CONSTANT)
+    Q_PROPERTY(QString price READ price CONSTANT)
+    Q_PROPERTY(int quantity READ quantity CONSTANT)
+    Q_PROPERTY(int fulfillableQuantity READ fulfillableQuantity CONSTANT)
     Q_PROPERTY(QDate createdAt READ createdAt CONSTANT)
     Q_PROPERTY(QDate updatedAt READ updatedAt CONSTANT)
     Q_PROPERTY(QList<QObject*> taxLines READ taxLines CONSTANT)
 
 public:
     explicit LineItem(QObject *parent = 0) : QObject(parent) { }
-    LineItem(const QJsonObject& json, QObject *parent = 0) : QObject(parent), json_(json) { }
+    LineItem(const QJsonObject& json, const QString& currency, QObject *parent = 0) : QObject(parent), currency_(currency), json_(json) { }
 
     int id() const;
     QDate createdAt() const;
@@ -168,12 +174,14 @@ public:
     QString variantTitle() const;
     QString price() const;
     int quantity() const;
+    int fulfillableQuantity() const;
 
     QList<QObject*> taxLines();
 
     QString json() const { return QJsonDocument(json_).toJson(QJsonDocument::Indented); }
 
 private:
+    QString currency_;
     QJsonObject json_;
 };
 

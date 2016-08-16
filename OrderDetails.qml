@@ -175,9 +175,73 @@ Page {
 
     Component {
         id: lineItemsComponent
-        Label {
-            anchors.centerIn: parent
-            text: 'Line Items'
+
+        Pane {
+            anchors.fill: parent
+            ListView {
+                id: lineItemsList
+                anchors.fill: parent
+                model: order.lineItems
+                delegate: ItemDelegate {
+                    width: parent.width
+                    height: 60
+                    RowLayout {
+                        anchors.fill: parent
+                        spacing: 15
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Row {
+                                spacing: 6
+                                Label {
+                                    background: Rectangle {
+                                        color: 'black'
+                                        radius: 3
+                                    }
+                                    color: 'white'
+                                    leftPadding: 3
+                                    rightPadding: 3
+                                    text: modelData.quantity
+                                }
+                                Text {
+                                    font.bold: true
+                                    elide: Text.ElideRight
+                                    fontSizeMode: Text.HorizontalFit
+                                    text: modelData.title
+                                }
+                            }
+                            Label {
+                                color: 'green'
+                                elide: Text.ElideRight
+                                text: modelData.variantTitle
+                            }
+                            Row {
+                                spacing: 6
+                                Label {
+                                    background: Rectangle {
+                                        color: 'darkgray'
+                                        radius: 3
+                                    }
+                                    color: 'white'
+                                    leftPadding: 3
+                                    rightPadding: 3
+                                    text: modelData.quantity - modelData.fulfillableQuantity
+                                }
+                                Text {
+                                    elide: Text.ElideRight
+                                    fontSizeMode: Text.HorizontalFit
+                                    color: 'darkgray'
+                                    text: ' fulfilled'
+                                }
+                            }
+                        }
+                        Label {
+                            Layout.alignment: Qt.AlignRight
+                            font.bold: true
+                            text: modelData.price
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -214,7 +278,7 @@ Page {
             text: qsTr('Details')
         }
         TabButton {
-            text: qsTr('Line Items')
+            text: qsTr('Line Items (%1)').arg(order && order.lineItems.length)
         }
         TabButton {
             text: qsTr('Response')
