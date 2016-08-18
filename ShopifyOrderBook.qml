@@ -11,52 +11,6 @@ Loader {
     property Order selectedOrder
     property string message
 
-    Popup {
-        id: datePicker
-        x: (root.width - width) / 2
-        y: (root.height - height) / 2
-        modal: true
-
-        property string title
-        property date selectedDate
-        property var selectionHandler
-
-        ColumnLayout {
-            Label {
-                Layout.fillWidth: true
-                horizontalAlignment: Label.AlignHCenter
-                font.bold: true
-                text: datePicker.title
-            }
-
-            OldControls.Calendar {
-                id: calendar
-                selectedDate: datePicker.selectedDate
-                maximumDate: new Date()
-                onClicked: {
-                    datePicker.selectionHandler( selectedDate )
-                    datePicker.close()
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                Button {
-                    text: qsTr('Today')
-                    onClicked: {
-                        calendar.selectedDate = new Date()
-                    }
-                }
-                Button {
-                    text: qsTr('Cancel')
-                    onClicked: {
-                        datePicker.close()
-                    }
-                }
-            }
-        }
-    }
-
     Component {
         id: loadedComponent
 
@@ -66,115 +20,124 @@ Loader {
                 Layout.preferredWidth: 350
                 Layout.fillHeight: true
 
-                property bool isFilterShowing: false
+//                property bool isFilterShowing: false
 
-                property string customerFilter
-                property date startDate: new Date()
-                property date endDate: new Date()
+//                property date startDate: new Date()
+//                property date endDate: new Date()
 
 
                 ColumnLayout {
                     anchors.fill: parent
-                    Pane {
-                        id: navHeader
-                        Layout.fillWidth: true
-                        padding: 0
-                        Button {
-                            anchors.right: parent.right
-                            text: orderBook.state === OrderBook.STATE_LOADING ? qsTr('Loading') : qsTr('Filter')
-                            onClicked: nav.isFilterShowing = !nav.isFilterShowing
-                        }
-                    }
-                    Pane {
-                        id: navFilter
-                        Layout.fillWidth: true
+//                    Pane {
+//                        id: navHeader
+//                        Layout.fillWidth: true
+//                        padding: 0
+//                        Button {
+//                            anchors.right: parent.right
+//                            text: orderBook.state === OrderBook.STATE_LOADING ? qsTr('Loading') : qsTr('Filter')
+//                            onClicked: nav.isFilterShowing = !nav.isFilterShowing
+//                        }
+//                    }
+//                    Pane {
+//                        id: navFilter
+//                        Layout.fillWidth: true
 
-                        visible: nav.isFilterShowing
+//                        visible: nav.isFilterShowing
 
-                        function openStartDateDialog() {
-                            datePicker.title = qsTr('Start Date')
-                            datePicker.selectedDate = nav.startDate
-                            datePicker.selectionHandler = function(d) { nav.startDate = root.orderBook.lastModifiedStart = d }
-                            datePicker.open()
-                        }
-
-                        function openEndDateDialog() {
-                            datePicker.title = qsTr('End Date')
-                            datePicker.selectedDate = nav.endDate
-                            datePicker.selectionHandler = function(d) { nav.endDate = root.orderBook.lastModifiedEnd = d }
-                            datePicker.open()
-                        }
-
-                        GridLayout {
-                            anchors.fill: parent
-                            columns: 3
-                            CheckBox {
-                                text: qsTr('Unshipped')
-                                checked: root.orderBook.showUnshipped
-                                onClicked: {
-                                    root.orderBook.showUnshipped = checked
-                                    checked = Qt.binding(function () {
-                                        return root.orderBook.showUnshipped
-                                    })
-                                }
-                            }
-                            CheckBox {
-                                text: qsTr('Partial')
-                                checked: root.orderBook.showPartial
-                                onClicked: {
-                                    root.orderBook.showPartial = checked
-                                    checked = Qt.binding(function () {
-                                        return root.orderBook.showPartial
-                                    })
-                                }
-                            }
-                            CheckBox {
-                                text: qsTr('Shipped')
-                                checked: root.orderBook.showShipped
-                                onClicked: {
-                                    root.orderBook.showShipped = checked
-                                    checked = Qt.binding(function () {
-                                        return root.orderBook.showShipped
-                                    })
-                                }
-                            }
-
+//                        GridLayout {
+//                            anchors.fill: parent
+//                            columns: 3
 //                            CheckBox {
-//                                id: startDateCheckBox
-//                                text: qsTr('Start Date')
-//                                checked: root.orderBook.filterByLastModifiedStart
-//                                onCheckedChanged: root.orderBook.filterByLastModifiedStart = checked
+//                                text: qsTr('Unshipped')
+//                                checked: root.orderBook.showUnshipped
+//                                onClicked: {
+//                                    root.orderBook.showUnshipped = checked
+//                                    checked = Qt.binding(function () {
+//                                        return root.orderBook.showUnshipped
+//                                    })
+//                                }
 //                            }
-//                            Label {
-//                                enabled: startDateCheckBox.checked
-//                                text: '<a href="xxx">' + nav.startDate.toDateString() + '</a>'
-//                                onLinkActivated: navFilter.openStartDateDialog()
-//                            }
-//                            Button {
-//                                text: qsTr('Change')
-//                                onClicked: navFilter.openStartDateDialog()
-//                            }
-
 //                            CheckBox {
-//                                id: endDateCheckBox
-//                                text: qsTr('End Date')
-//                                checked: root.orderBook.filterByLastModifiedEnd
-//                                onCheckedChanged: root.orderBook.filterByLastModifiedEnd = checked
+//                                text: qsTr('Partial')
+//                                checked: root.orderBook.showPartial
+//                                onClicked: {
+//                                    root.orderBook.showPartial = checked
+//                                    checked = Qt.binding(function () {
+//                                        return root.orderBook.showPartial
+//                                    })
+//                                }
 //                            }
-//                            Label {
-//                                text: '<a href="xxx">' + nav.endDate.toDateString() + '</a>'
-//                                onLinkActivated: navFilter.openEndDateDialog()
+//                            CheckBox {
+//                                text: qsTr('Shipped')
+//                                checked: root.orderBook.showShipped
+//                                onClicked: {
+//                                    root.orderBook.showShipped = checked
+//                                    checked = Qt.binding(function () {
+//                                        return root.orderBook.showShipped
+//                                    })
+//                                }
 //                            }
-//                            Button {
-//                                text: qsTr('Change')
-//                                onClicked: navFilter.openEndDateDialog()
-//                            }
-                        }
-                    }
+//                        }
+//                    }
 
                     ListView {
+                        id: orderListView
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+
+                        property string filterText: ''
+
+                        function getFilteredOrders(needle) {
+                            if (!needle) return orderBook.orders;
+                            return orderBook.orders.filter(function(e) {
+                                if (e.name.toLowerCase().indexOf(needle) >= 0) return true
+                                if (e.customer && e.customer.defaultAddress) {
+                                    var address = e.customer.defaultAddress
+                                    if (address.name.toLowerCase().indexOf(needle) >= 0) return true
+                                }
+                                if (e.name.toLowerCase().indexOf(needle) >= 0) return true
+                                return false
+                            })
+                        }
+
+                        function updateFilterText(text) {
+                            filterText = text
+                            orderListView.model = getFilteredOrders(text)
+                        }
+
+                        Keys.onPressed: {
+                            if (event.key === Qt.Key_Escape) {
+                                updateFilterText('')
+                            }
+                        }
+
+                        header: RowLayout {
+                            width: orderListView.width
+                            ComboBox {
+                                textRole: 'name'
+                                currentIndex: orderBook.filter
+                                model: ListModel {
+                                    ListElement { name: qsTr('All Orders') }
+                                    ListElement { name: qsTr('Unfulfilled') }
+                                    ListElement { name: qsTr('Payment Pending') }
+                                }
+                                onActivated: {
+                                    switch(index) {
+                                    case 0: orderBook.filter = OrderBook.FILTER_ALL; break;
+                                    case 1: orderBook.filter = OrderBook.FILTER_UNFULFILLED; break;
+                                    case 2: orderBook.filter = OrderBook.FILTER_PAYMENT_PENDING; break;
+                                    }
+                                }
+                            }
+
+                            TextField {
+                                id: filterTextField
+                                text: orderListView.filterText
+                                Layout.fillWidth: true
+                                placeholderText: qsTr('Search In Page')
+                                onAccepted: orderListView.updateFilterText(text)
+                            }
+                        }
 
                         width: parent.width
                         clip: true

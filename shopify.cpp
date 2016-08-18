@@ -518,53 +518,6 @@ QStringList Order::tags() const
     return result;
 }
 
-//Order Order::fromJson(const QJsonObject& json)
-//{
-//    json["test"].toBool();
-//    json["confirmed"].toBool();
-
-
-
-//    // customer
-
-//    //      "shipping_lines": [
-//    //      ],
-//    //      "fulfillments": [
-//    //      ],
-
-
-//    //      "line_items": [
-//    //        {
-//    //          "id": 1071823191,
-//    //          "variant_id": 447654529,
-//    //          "title": "IPod Touch 8GB",
-//    //          "quantity": 1,
-//    //          "price": "199.00",
-//    //          "grams": 200,
-//    //          "sku": "IPOD2009BLACK",
-//    //          "variant_title": "Black",
-//    //          "vendor": null,
-//    //          "fulfillment_service": "manual",
-//    //          "product_id": 921728736,
-//    //          "requires_shipping": true,
-//    //          "taxable": true,
-//    //          "gift_card": false,
-//    //          "name": "IPod Touch 8GB - Black",
-//    //          "variant_inventory_management": "shopify",
-//    //          "properties": [
-//    //          ],
-//    //          "product_exists": true,
-//    //          "fulfillable_quantity": 1,
-//    //          "total_discount": "0.00",
-//    //          "fulfillment_status": null,
-//    //          "tax_lines": [
-//    //          ]
-//    //        }
-//    //      ],
-
-
-//}
-
 //
 // OrderBook
 //
@@ -573,9 +526,7 @@ OrderBook::OrderBook(QObject* parent)
     : QObject(parent)
     , shopify_(nullptr)
     , state_(STATE_LOADING)
-    , filterShowUnshipped_(true)
-    , filterShowPartial_(true)
-    , filterShowShipped_(false)
+    , filter_(FILTER_UNFULFILLED)
     , currentReply_(nullptr)
 {
 }
@@ -584,9 +535,7 @@ OrderBook::OrderBook(Shopify& shopify, QObject* parent)
     : QObject(parent)
     , shopify_(&shopify)
     , state_(STATE_LOADING)
-    , filterShowUnshipped_(true)
-    , filterShowPartial_(true)
-    , filterShowShipped_(false)
+    , filter_(FILTER_UNFULFILLED)
     , currentReply_(nullptr)
 {
     reload();
@@ -646,22 +595,14 @@ void OrderBook::reload()
     setState(STATE_LOADING);
 
     QUrlQuery query;
-    qDebug() << "considering query params: " << filterByLastModifiedStart_ << ", " << filterByLastModifiedEnd_;
-    if (filterByLastModifiedStart_ && !lastModifiedStart_.isNull())
+    switch (filter_)
     {
-        qDebug() << "adding lastmodified min: " << lastModifiedStart_.toString(Qt::ISODate);
-        // 2014-04-25T16:15:47-04:00
-        query.addQueryItem("updated_at_min", lastModifiedStart_.toString(Qt::ISODate));
+    case FILTER_UNFULFILLED: query.addQueryItem("fulfillment_status", "unshipped"); break;
+    case FILTER_PAYMENT_PENDING: query.addQueryItem("financial_status", "pending"); break;
+    case FILTER_ALL: // intentional fallthrough
+    default:
+        break;
     }
-    if (filterByLastModifiedEnd_ && !lastModifiedEnd_.isNull())
-    {
-        qDebug() << "adding lastmodified max: " << lastModifiedStart_.toString(Qt::ISODate);
-        query.addQueryItem("updated_at_max", lastModifiedEnd_.toString(Qt::ISODate));
-    }
-
-    if (filterShowPartial_) query.addQueryItem("fulfillment_status", "partial");
-    if (filterShowUnshipped_) query.addQueryItem("fulfillment_status", "unshipped");
-    if (filterShowShipped_) query.addQueryItem("fulfillment_status", "shipped");
 
     currentReply_ = shopify_->makeGetRequest("orders", query);
     currentReply_->setParent(this);
@@ -714,7 +655,5 @@ QUrl Shopify::makeGetUrl(const QString& entity, const QUrlQuery& query) const
    relative.setQuery(query);
 
    auto resolved = base.resolved(relative);
-   qDebug() << "resolved url:" << resolved.url();
-
    return resolved;
 }

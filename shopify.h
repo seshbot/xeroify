@@ -298,15 +298,8 @@ class OrderBook : public QObject
     Q_PROPERTY(Shopify* shopify READ shopify WRITE setShopify)
     Q_PROPERTY(State state READ state NOTIFY stateChanged)
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged)
-    Q_PROPERTY(QString customer READ customer WRITE setCustomer)
-    Q_PROPERTY(bool filterByLastModifiedStart READ filterByLastModifiedStart WRITE setFilterByLastModifiedStart NOTIFY filterByLastModifiedStartChanged)
-    Q_PROPERTY(bool filterByLastModifiedEnd READ filterByLastModifiedEnd WRITE setFilterByLastModifiedEnd NOTIFY filterByLastModifiedEndChanged)
-    Q_PROPERTY(QDate lastModifiedStart READ lastModifiedStart WRITE setLastModifiedStart)
-    Q_PROPERTY(QDate lastModifiedEnd READ lastModifiedEnd WRITE setLastModifiedEnd)
     Q_PROPERTY(QList<QObject*> orders READ orders NOTIFY ordersChanged)
-    Q_PROPERTY(bool showUnshipped READ showUnshipped WRITE setShowUnshipped NOTIFY showUnshippedUpdated)
-    Q_PROPERTY(bool showPartial READ showPartial WRITE setShowPartial NOTIFY showPartialUpdated)
-    Q_PROPERTY(bool showShipped READ showShipped WRITE setShowShipped NOTIFY showShippedUpdated)
+    Q_PROPERTY(Filter filter READ filter WRITE setFilter NOTIFY filterChanged)
 
 public:
     enum State
@@ -316,6 +309,14 @@ public:
         STATE_LOADED,
     };
     Q_ENUMS(State)
+
+    enum Filter
+    {
+        FILTER_ALL,
+        FILTER_UNFULFILLED,
+        FILTER_PAYMENT_PENDING,
+    };
+    Q_ENUMS(Filter)
 
     // the app uses 'Open, Unfulfilled, Unpaid'
 
@@ -328,37 +329,16 @@ public:
     Shopify* shopify() { return shopify_; }
     void setShopify(Shopify* shopify) { shopify_ = shopify; reload(); }
 
-    QString customer() const { return customer_; }
-    void setCustomer(const QString& customer) { customer_ = customer; }
+    Filter filter() const { return filter_; }
+    void setFilter(Filter filter) { if (filter_ == filter) return; filter_ = filter; emit filterChanged(); reload(); }
 
-    void setFilterByLastModifiedStart(bool value) { if (filterByLastModifiedStart_ == value) return; filterByLastModifiedStart_ = value; emit filterByLastModifiedStartChanged(); reload(); }
-    bool filterByLastModifiedStart() const { return filterByLastModifiedStart_; }
-    void setLastModifiedStart(const QDate& date) { lastModifiedStart_ = date; if (filterByLastModifiedStart_) reload(); }
-    QDate lastModifiedStart() const { return lastModifiedStart_; }
-
-    void setFilterByLastModifiedEnd(bool value) { if (filterByLastModifiedEnd_ == value) return; filterByLastModifiedEnd_ = value; emit filterByLastModifiedEndChanged(); reload(); }
-    bool filterByLastModifiedEnd() const { return filterByLastModifiedEnd_; }
-    void setLastModifiedEnd(const QDate& date) { lastModifiedEnd_ = date; if (filterByLastModifiedEnd_) reload(); }
-    QDate lastModifiedEnd() const { return lastModifiedEnd_; }
-
-    bool showUnshipped() const { return filterShowUnshipped_; }
-    bool showPartial() const { return filterShowPartial_; }
-    bool showShipped() const { return filterShowShipped_; }
-
-    void setShowUnshipped(bool value) { filterShowUnshipped_ = value; reload(); }
-    void setShowPartial(bool value) { filterShowPartial_ = value; reload(); }
-    void setShowShipped(bool value) { filterShowShipped_ = value; reload(); }
     QList<QObject*> orders() { return orders_; }
 
 signals:
     void stateChanged();
     void ordersChanged();
     void errorMessageChanged();
-    void filterByLastModifiedStartChanged();
-    void filterByLastModifiedEndChanged();
-    void showUnshippedUpdated();
-    void showPartialUpdated();
-    void showShippedUpdated();
+    void filterChanged();
 
 private slots:
     void onReplyFinished();
@@ -372,17 +352,8 @@ private:
     State state_;
     QString errorMessage_;
 
-    QString customer_;
-
-    bool filterByLastModifiedStart_;
-    bool filterByLastModifiedEnd_;
-    QDate lastModifiedStart_;
-    QDate lastModifiedEnd_;
-    bool filterShowUnshipped_;
-    bool filterShowPartial_;
-    bool filterShowShipped_;
-
     QList<QObject*> orders_;
+    Filter filter_;
 
     QNetworkReply* currentReply_;
 };
