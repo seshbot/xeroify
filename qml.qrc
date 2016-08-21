@@ -16,5 +16,7 @@
         <file>MakeLeapsImporter.qml</file>
         <file>ShopifyOrderBook.qml</file>
         <file>OrderDetails.qml</file>
+        <file>LineItemDelegate.qml</file>
+        <file>OrderDelegateContentItem.qml</file>
     </qresource>
 </RCC>

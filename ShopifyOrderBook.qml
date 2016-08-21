@@ -5,8 +5,8 @@ import QtQuick.Layouts 1.0
 import BusyBot 1.0
 
 Loader {
-    //anchors.fill: parent
     id: root
+
     property OrderBook orderBook
     property Order selectedOrder
     property string message
@@ -15,70 +15,28 @@ Loader {
         id: loadedComponent
 
         RowLayout {
+            id: orderBookRow
+            property var checkedOrders: []
+            function orderChecked(order) {
+                var idx = checkedOrders.indexOf(order)
+                if (idx < 0) {
+                    checkedOrders.push(order)
+                }
+            }
+            function orderUnchecked(order) {
+                var idx = checkedOrders.indexOf(order)
+                if (idx >= 0) {
+                    checkedOrders.splice(idx, 1)
+                }
+            }
+
             Page {
                 id: nav
                 Layout.preferredWidth: 350
                 Layout.fillHeight: true
 
-//                property bool isFilterShowing: false
-
-//                property date startDate: new Date()
-//                property date endDate: new Date()
-
-
                 ColumnLayout {
                     anchors.fill: parent
-//                    Pane {
-//                        id: navHeader
-//                        Layout.fillWidth: true
-//                        padding: 0
-//                        Button {
-//                            anchors.right: parent.right
-//                            text: orderBook.state === OrderBook.STATE_LOADING ? qsTr('Loading') : qsTr('Filter')
-//                            onClicked: nav.isFilterShowing = !nav.isFilterShowing
-//                        }
-//                    }
-//                    Pane {
-//                        id: navFilter
-//                        Layout.fillWidth: true
-
-//                        visible: nav.isFilterShowing
-
-//                        GridLayout {
-//                            anchors.fill: parent
-//                            columns: 3
-//                            CheckBox {
-//                                text: qsTr('Unshipped')
-//                                checked: root.orderBook.showUnshipped
-//                                onClicked: {
-//                                    root.orderBook.showUnshipped = checked
-//                                    checked = Qt.binding(function () {
-//                                        return root.orderBook.showUnshipped
-//                                    })
-//                                }
-//                            }
-//                            CheckBox {
-//                                text: qsTr('Partial')
-//                                checked: root.orderBook.showPartial
-//                                onClicked: {
-//                                    root.orderBook.showPartial = checked
-//                                    checked = Qt.binding(function () {
-//                                        return root.orderBook.showPartial
-//                                    })
-//                                }
-//                            }
-//                            CheckBox {
-//                                text: qsTr('Shipped')
-//                                checked: root.orderBook.showShipped
-//                                onClicked: {
-//                                    root.orderBook.showShipped = checked
-//                                    checked = Qt.binding(function () {
-//                                        return root.orderBook.showShipped
-//                                    })
-//                                }
-//                            }
-//                        }
-//                    }
 
                     ListView {
                         id: orderListView
@@ -146,44 +104,18 @@ Loader {
                             width: parent.width
                             padding: 6
                             highlighted: selectedOrder === modelData
-                            GridLayout {
+                            OrderDelegateContentItem {
                                 width: parent.width - 50
-                                rowSpacing: 6
-                                columns: 2
-                                Text {
-                                    Layout.leftMargin: 10
-                                    text: modelData.name }
-                                Row {
-                                    Layout.alignment: Qt.AlignRight
-                                    Text {
-                                        text: modelData.currency
-                                        color: 'darkgray'
-                                    }
-                                    Text {
-                                        text: modelData.totalPrice
-                                    }
-                                }
-
-                                Text {
-                                    Layout.leftMargin: 10
-                                    text: modelData.customer.defaultAddress.name; color: 'darkgray'
-                                }
-                                Row {
-                                    Layout.alignment: Qt.AlignRight
-                                    Text {
-                                        text: modelData.financialStatusString
-                                        color: modelData.financialStatus === Order.FINANCIAL_STATUS_PAID ? 'green' : 'blue'
-                                    }
-                                    Text { text: ' \u00B7 '; color: 'darkgray' }
-                                    Text {
-                                        text: modelData.fulfillmentStatusString
-                                        color: modelData.fulfillmentStatus === Order.FULFILLMENT_STATUS_SHIPPED ? 'green' : 'blue'
-                                    }
-                                }
+                                order: modelData
                             }
                             onClicked: {
-                                console.log('clicked on ', modelData.name)
                                 selectedOrder = modelData
+                            }
+                            onCheckStateChanged: {
+                                switch (checkState) {
+                                case Qt.Unchecked: orderBookRow.orderUnchecked(modelData); break
+                                default: orderBookRow.orderChecked(modelData); break
+                                }
                             }
                         }
                         ScrollIndicator.vertical: ScrollIndicator { }
@@ -200,6 +132,10 @@ Loader {
                     Button {
                         anchors.right: parent.right
                         text: qsTr('Create Invoices')
+                        onClicked: {
+                            createInvoicesWizard.orders = orderBookRow.checkedOrders
+                            createInvoicesWizard.open()
+                        }
                     }
                 }
 
@@ -222,6 +158,43 @@ Loader {
                     sourceComponent: selectedOrder ? orderSelectedComponent : noOrderSelectedComponent
                 }
             } // details page
+        }
+    }
+
+    Popup {
+        id: createInvoicesWizard
+        width: ( root.width / 3 ) * 2
+        height: ( root.height / 5 ) * 4
+        x: ( root.width - width ) / 2
+        y: ( root.height - height ) / 2
+
+        modal: true
+
+        property var orders
+
+        Column {
+            id: wizardContent
+            anchors.fill: parent
+
+            property Order selectedOrder
+
+            ListView {
+                id: ordersListView
+                anchors.fill: parent
+                model: createInvoicesWizard.orders
+                delegate: ItemDelegate {
+                    width: parent.width
+                    padding: 6
+                    highlighted: wizardContent.selectedOrder === modelData
+                    OrderDelegateContentItem {
+                        width: parent.width - 50
+                        order: modelData
+                    }
+                    onClicked: {
+                        wizardContent.selectedOrder = modelData
+                    }
+                }
+            }
         }
     }
 
