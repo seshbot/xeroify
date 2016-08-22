@@ -182,10 +182,12 @@ Page {
                 id: lineItemsList
                 anchors.fill: parent
                 model: order.lineItems
-                delegate: LineItemDelegate {
+                delegate: ItemDelegate {
                     width: parent.width
                     height: 60
-                    lineItem: modelData
+                    LineItemSummary {
+                        lineItem: modelData
+                    }
                 }
             }
         }

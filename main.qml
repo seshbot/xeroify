@@ -225,6 +225,8 @@ ApplicationWindow {
                 ScrollIndicator.vertical: ScrollIndicator { }
             }
         }
+
+        property string previousWindowTitle: ''
         Component {
             id: shopifyOrdersPage
 
@@ -232,6 +234,27 @@ ApplicationWindow {
                 //anchors.fill: parent
                 orderBook: OrderBook {
                     shopify: window.shopify
+                }
+                onCreateInvoiceClicked: {
+                    if (!selectedOrder) {
+                        console.log('not creating invoice - no order selected')
+                        return
+                    }
+
+                    previousWindowTitle = windowTitle.text
+                    windowTitle.text = 'Create Invoice'
+                    stackView.push(createInvoiceWizard, { order: selectedOrder })
+                }
+            }
+        }
+        Component {
+            id: createInvoiceWizard
+
+            CreateInvoiceWizard {
+                padding: 6
+                onBackButtonPressed: {
+                    stackView.pop()
+                    windowTitle.text = previousWindowTitle
                 }
             }
         }

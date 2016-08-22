@@ -11,24 +11,13 @@ Loader {
     property Order selectedOrder
     property string message
 
+    signal createInvoiceClicked(Order order)
+
     Component {
         id: loadedComponent
 
         RowLayout {
             id: orderBookRow
-            property var checkedOrders: []
-            function orderChecked(order) {
-                var idx = checkedOrders.indexOf(order)
-                if (idx < 0) {
-                    checkedOrders.push(order)
-                }
-            }
-            function orderUnchecked(order) {
-                var idx = checkedOrders.indexOf(order)
-                if (idx >= 0) {
-                    checkedOrders.splice(idx, 1)
-                }
-            }
 
             Page {
                 id: nav
@@ -100,22 +89,18 @@ Loader {
                         width: parent.width
                         clip: true
                         model: orderBook.orders
-                        delegate: CheckDelegate {
+                        delegate: ItemDelegate {
                             width: parent.width
+                            height: 60
                             padding: 6
                             highlighted: selectedOrder === modelData
-                            OrderDelegateContentItem {
-                                width: parent.width - 50
+                            OrderSummary {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 12
                                 order: modelData
                             }
                             onClicked: {
                                 selectedOrder = modelData
-                            }
-                            onCheckStateChanged: {
-                                switch (checkState) {
-                                case Qt.Unchecked: orderBookRow.orderUnchecked(modelData); break
-                                default: orderBookRow.orderChecked(modelData); break
-                                }
                             }
                         }
                         ScrollIndicator.vertical: ScrollIndicator { }
@@ -133,8 +118,7 @@ Loader {
                         anchors.right: parent.right
                         text: qsTr('Create Invoices')
                         onClicked: {
-                            createInvoicesWizard.orders = orderBookRow.checkedOrders
-                            createInvoicesWizard.open()
+                            createInvoiceClicked(selectedOrder)
                         }
                     }
                 }
@@ -158,43 +142,6 @@ Loader {
                     sourceComponent: selectedOrder ? orderSelectedComponent : noOrderSelectedComponent
                 }
             } // details page
-        }
-    }
-
-    Popup {
-        id: createInvoicesWizard
-        width: ( root.width / 3 ) * 2
-        height: ( root.height / 5 ) * 4
-        x: ( root.width - width ) / 2
-        y: ( root.height - height ) / 2
-
-        modal: true
-
-        property var orders
-
-        Column {
-            id: wizardContent
-            anchors.fill: parent
-
-            property Order selectedOrder
-
-            ListView {
-                id: ordersListView
-                anchors.fill: parent
-                model: createInvoicesWizard.orders
-                delegate: ItemDelegate {
-                    width: parent.width
-                    padding: 6
-                    highlighted: wizardContent.selectedOrder === modelData
-                    OrderDelegateContentItem {
-                        width: parent.width - 50
-                        order: modelData
-                    }
-                    onClicked: {
-                        wizardContent.selectedOrder = modelData
-                    }
-                }
-            }
         }
     }
 
